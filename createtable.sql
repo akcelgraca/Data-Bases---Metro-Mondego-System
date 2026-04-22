@@ -28,16 +28,16 @@ CREATE TABLE trajeto (
 	plataforma_sentido		 VARCHAR(512),
 	linha_id			 BIGINT,
 	paragem_id			 BIGINT NOT NULL,
-	PRIMARY KEY(sequencia,linha_id)
+	PRIMARY KEY(sequencia, linha_id)
 );
 
 CREATE TABLE linha (
 	id		 BIGINT,
 	nome		 VARCHAR(512),
-	hora_inicio	 TIMESTAMP,
-	hora_fim		 TIMESTAMP,
-	frequencia	 BIGINT,
-	capacidade_default BIGINT,
+	hora_inicio	 VARCHAR(512),
+	hora_fim		 VARCHAR(512),
+	frequencia	 INTEGER,
+	capacidade_default INTEGER,
 	PRIMARY KEY(id)
 );
 
@@ -163,4 +163,3 @@ ALTER TABLE aviso_cliente ADD CONSTRAINT aviso_cliente_fk1 FOREIGN KEY (aviso_id
 ALTER TABLE aviso_cliente ADD CONSTRAINT aviso_cliente_fk2 FOREIGN KEY (cliente_pessoa_id) REFERENCES cliente(pessoa_id);
 ALTER TABLE interrupcao_linha ADD CONSTRAINT interrupcao_linha_fk1 FOREIGN KEY (administrador_pessoa_id) REFERENCES administrador(pessoa_id);
 ALTER TABLE interrupcao_linha ADD CONSTRAINT interrupcao_linha_fk2 FOREIGN KEY (linha_id) REFERENCES linha(id);
-
