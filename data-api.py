@@ -11,7 +11,7 @@
 ## =============================================
 ##
 ## Authors:
-##   Akcel Soares da Graça
+##   Akcel, Martim, Tiago
 ##   BD 2025/2026 Team
 ##   University of Coimbra
 
@@ -37,7 +37,7 @@ formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s', '%H:%
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-# CONFIGURAÇÃO DA CHAVE SECRETA PARA JWT - Adicionei - Akcel
+# CONFIGURAÇÃO DA CHAVE SECRETA PARA JWT - Adicionei
 app.config['SECRET_KEY'] = 'chave_super_secreta_do_projeto'   # podes alterar, mas mantém secreta
 
 StatusCodes = {
