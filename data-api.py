@@ -19,13 +19,26 @@
 import flask
 import logging
 import psycopg2
-import time
 import jwt
 import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
 app = flask.Flask(__name__)
+
+# Logger definido ao nível do módulo para estar disponível em todos os endpoints.
+# Se ficar dentro do 'if __name__ == __main__', o Flask em modo debug reinicia o processo
+# e o logger fica inacessível, causando NameError.
+logging.basicConfig(filename='log_file.log')
+logger = logging.getLogger('logger')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s', '%H:%M:%S')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+# CONFIGURAÇÃO DA CHAVE SECRETA PARA JWT - Adicionei - Akcel
+app.config['SECRET_KEY'] = 'chave_super_secreta_do_projeto'   # podes alterar, mas mantém secreta
 
 StatusCodes = {
     'success': 200,
@@ -48,6 +61,59 @@ def db_connection():
 
     return db
 
+##########################################################
+## FUNÇÕES AUXILIARES DE AUTENTICAÇÃO
+##########################################################
+
+def generate_token(user_id, username, is_admin, is_super=False):
+    """
+    Gera um JWT com validade de 2 horas.
+    O token contém o user_id, username, e flags de permissão (is_admin, is_super).
+    Este token será enviado ao cliente e deve ser incluído no header
+    'Authorization: Bearer <token>' em todos os pedidos seguintes.
+    """
+    payload = {
+        'user_id': user_id,
+        'username': username,
+        'is_admin': is_admin,
+        'is_super': is_super,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+    }
+    token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+    return token
+
+
+def token_required(f):
+    """
+    Decorador para proteger endpoints que requerem autenticação.
+    Lê o token do header 'Authorization: Bearer <token>', valida-o
+    e passa os dados do utilizador à função do endpoint como 'current_user'.
+    Se o token estiver em falta, expirado ou inválido, devolve erro 400.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+
+        if 'Authorization' in flask.request.headers:
+            auth_header = flask.request.headers['Authorization']
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0] == 'Bearer':
+                token = parts[1]
+
+        if not token:
+            return flask.jsonify({'status': 400, 'errors': 'Token em falta'}), 400
+
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            current_user = data
+        except jwt.ExpiredSignatureError:
+            return flask.jsonify({'status': 400, 'errors': 'Token expirado'}), 400
+        except jwt.InvalidTokenError:
+            return flask.jsonify({'status': 400, 'errors': 'Token inválido'}), 400
+
+        return f(current_user, *args, **kwargs)
+
+    return decorated
 
 
 
@@ -55,306 +121,83 @@ def db_connection():
 ## ENDPOINTS
 ##########################################################
 
+##
+## Endpoint 1 — Autenticação
+##
+## Recebe username e password, verifica na BD e devolve um token JWT.
+## O token deve ser guardado pelo cliente e enviado no header
+## 'Authorization: Bearer <token>' em todos os pedidos seguintes.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/user
+## Body: {"username": "superadmin", "password": "hash_super"}
+## Resposta: {"status": 200, "results": "<token>"}
+##
+
+@app.route('/dbproj/user', methods=['PUT'])
+def login():
+    logger.info('PUT /dbproj/user')
+    payload = flask.request.get_json()
+
+    if not payload or 'username' not in payload or 'password' not in payload:
+        return flask.jsonify({'status': 400, 'errors': 'Username e password são obrigatórios'}), 400
+
+    username = payload['username']
+    password = payload['password']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Faz JOIN com administrador para saber se o utilizador é admin e se é super admin.
+        # LEFT JOIN garante que clientes normais (sem entrada em administrador) também são encontrados.
+        cur.execute("""
+            SELECT p.id, p.username, p.password_hash,
+                   a.pessoa_id IS NOT NULL AS is_admin,
+                   a.is_super
+            FROM pessoa p
+            LEFT JOIN administrador a ON p.id = a.pessoa_id
+            WHERE p.username = %s
+        """, (username,))
+        user = cur.fetchone()
+
+        if user is None:
+            return flask.jsonify({'status': 400, 'errors': 'Credenciais inválidas'}), 400
+
+        user_id, db_username, db_password_hash, is_admin, is_super = user
+
+        # Comparação direta da password (os dados de teste têm passwords em texto simples).
+        # Numa versão de produção, usaríamos bcrypt ou argon2 para comparar hashes seguros.
+        if db_password_hash != password:
+            return flask.jsonify({'status': 400, 'errors': 'Credenciais inválidas'}), 400
+
+        token = generate_token(user_id, db_username, is_admin, is_super)
+        logger.debug(f'Login bem-sucedido para {db_username}, admin={is_admin}, super={is_super}')
+
+        response = {'status': 200, 'results': token}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'PUT /dbproj/user - error: {error}')
+        response = {'status': 500, 'errors': str(error)}
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
 
 @app.route('/')
 def landing_page():
     return """
-
-    Hello World (Python Native)!  <br/>
+    Metro Mondego API <br/>
     <br/>
-    Check the sources for instructions on how to use the endpoints!<br/>
+    Endpoints disponíveis:<br/>
+    PUT /dbproj/user — Autenticação (login)<br/>
     <br/>
-    BD 2025-2026 Team<br/>
-    <br/>
+    BD 2025-2026<br/>
     """
-
-##
-## Demo GET
-##
-## Obtain all departments in JSON format
-##
-## To use it, access:
-##
-## http://localhost:8080/departments/
-##
-
-@app.route('/departments/', methods=['GET'])
-def get_all_departments():
-    logger.info('GET /departments')
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    try:
-        query = 'SELECT ndep, nome, local FROM dep'
-        cur.execute(query)
-        rows = cur.fetchall()
-
-        logger.debug('GET /departments - parse')
-        Results = []
-        for row in rows:
-            logger.debug(row)
-            content = {'ndep': int(row[0]), 'nome': row[1], 'localidade': row[2]}
-            Results.append(content)  # appending to the payload to be returned
-
-        response = {'status': StatusCodes['success'], 'results': Results}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'GET /departments - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-##
-## Demo GET
-##
-## Obtain all pessoa in JSON format
-##
-## To use it, access:
-##
-## http://localhost:8080/pessoa/
-##
-
-@app.route('/pessoa/', methods=['GET'])
-def get_all_pessoas():
-    logger.info('GET /pessoa')
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    try:
-        query = 'SELECT * FROM pessoa'
-        cur.execute(query)
-        rows = cur.fetchall()
-
-        logger.debug('GET /pessoa - parse')
-        Results = []
-        for row in rows:
-            logger.debug(row)
-            content = {'nif': int(row[0]), 'nome': row[2], 'morada': row[4]}
-            Results.append(content)  # appending to the payload to be returned
-
-        response = {'status': StatusCodes['success'], 'results': Results}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'GET /pessoa - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-
-##
-## Demo GET
-##
-## Obtain department with ndep <ndep>
-##
-## To use it, access:
-##
-## http://localhost:8080/departments/10
-##
-
-@app.route('/departments/<ndep>/', methods=['GET'])
-def get_department(ndep):
-    logger.info('GET /departments/<ndep>')
-
-    logger.debug(f'ndep: {ndep}')
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    try:
-        cur.execute('SELECT ndep, nome, local FROM dep where ndep = %s', (ndep,))
-        rows = cur.fetchall()
-
-        row = rows[0]
-
-        logger.debug('GET /departments/<ndep> - parse')
-        logger.debug(row)
-        content = {'ndep': int(row[0]), 'nome': row[1], 'localidade': row[2]}
-
-        response = {'status': StatusCodes['success'], 'results': content}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'GET /departments/<ndep> - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-
-##
-## Demo POST
-##
-## Add a new department in a JSON payload
-##
-## To use it, you need to use postman or curl:
-##
-## curl -X POST http://localhost:8080/departments/ -H 'Content-Type: application/json' -d '{'localidade': 'Polo II', 'ndep': 100, 'nome': 'Seguranca'}'
-##
-
-@app.route('/departments/', methods=['POST'])
-def add_departments():
-    logger.info('POST /departments')
-    payload = flask.request.get_json()
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    logger.debug(f'POST /departments - payload: {payload}')
-
-    # do not forget to validate every argument, e.g.,:
-    if 'ndep' not in payload:
-        response = {'status': StatusCodes['api_error'], 'results': 'ndep value not in payload'}
-        return flask.jsonify(response)
-
-    # parameterized queries, good for security and performance
-    statement = 'INSERT INTO dep (ndep, nome, local) VALUES (%s, %s, %s)'
-    values = (payload['ndep'], payload['localidade'], payload['nome'])
-
-    try:
-        cur.execute(statement, values)
-
-        # commit the transaction
-        conn.commit()
-        response = {'status': StatusCodes['success'], 'results': f'Inserted dep {payload["ndep"]}'}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'POST /departments - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-        # an error occurred, rollback
-        conn.rollback()
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-##
-## Demo POST
-##
-## Add a new pessoa in a JSON payload
-##
-## To use it, you need to use postman or curl:
-##
-## curl -X POST http://localhost:8080/departments/ -H 'Content-Type: application/json' -d '{'localidade': 'Polo II', 'ndep': 100, 'nome': 'Seguranca'}'
-##
-
-@app.route('/pessoa/', methods=['POST'])
-def add_pessoa():
-    logger.info('POST /pessoa')
-    payload = flask.request.get_json()
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    logger.debug(f'POST /pessoa - payload: {payload}')
-
-    # do not forget to validate every argument, e.g.,:
-    if 'nif' not in payload:
-        response = {'status': StatusCodes['api_error'], 'results': 'nif value not in payload'}
-        return flask.jsonify(response)
-
-    # parameterized queries, good for security and performance
-    statement = 'INSERT INTO pessoa (nif, cc, nome,telefone, morada) VALUES (%s, %s, %s, %s,%s)'
-    values = (payload['nif'], payload['cc'], payload['nome'],payload['telefone'],payload['morada'])
-
-    try:
-        cur.execute(statement, values)
-
-        # commit the transaction
-        conn.commit()
-        response = {'status': StatusCodes['success'], 'results': f'Inserted dep {payload["nif"]}'}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'POST /pessoa - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-        # an error occurred, rollback
-        conn.rollback()
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-##
-## Demo PUT
-##
-## Update a department based on a JSON payload
-##
-## To use it, you need to use postman or curl:
-##
-## curl -X PUT http://localhost:8080/departments/ -H 'Content-Type: application/json' -d '{'ndep': 100, 'localidade': 'Porto'}'
-##
-
-@app.route('/departments/<ndep>', methods=['PUT'])
-def update_departments(ndep):
-    logger.info('PUT /departments/<ndep>')
-    payload = flask.request.get_json()
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    logger.debug(f'PUT /departments/<ndep> - payload: {payload}')
-
-    # do not forget to validate every argument, e.g.,:
-    if 'localidade' not in payload:
-        response = {'status': StatusCodes['api_error'], 'results': 'localidade is required to update'}
-        return flask.jsonify(response)
-
-    # parameterized queries, good for security and performance
-    statement = 'UPDATE dep SET local = %s WHERE ndep = %s'
-    values = (payload['localidade'], ndep)
-
-    try:
-        res = cur.execute(statement, values)
-        response = {'status': StatusCodes['success'], 'results': f'Updated: {cur.rowcount}'}
-
-        # commit the transaction
-        conn.commit()
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(error)
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-        # an error occurred, rollback
-        conn.rollback()
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
 
 
 if __name__ == '__main__':
-
-    # set up logging
-    logging.basicConfig(filename='log_file.log')
-    logger = logging.getLogger('logger')
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s [%(levelname)s]:  %(message)s', '%H:%M:%S')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
     host = '127.0.0.1'
     port = 8080
     app.run(host=host, debug=True, threaded=True, port=port)
