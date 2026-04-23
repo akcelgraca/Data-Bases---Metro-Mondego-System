@@ -79,8 +79,15 @@ def generate_token(user_id, username, is_admin, is_super=False):
         'is_super': is_super,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)
     }
+
     token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+
+    # compatibilidade com versões diferentes do PyJWT
+    if isinstance(token, bytes):
+        token = token.decode('utf-8')
+
     return token
+
 
 
 def token_required(f):
@@ -96,6 +103,7 @@ def token_required(f):
 
         if 'Authorization' in flask.request.headers:
             auth_header = flask.request.headers['Authorization']
+            logger.debug(f'Authorization header recebido: {auth_header}')
             parts = auth_header.split()
             if len(parts) == 2 and parts[0] == 'Bearer':
                 token = parts[1]
@@ -106,9 +114,11 @@ def token_required(f):
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
             current_user = data
+            logger.debug(f'Token válido para user={current_user.get("username")}')
         except jwt.ExpiredSignatureError:
             return flask.jsonify({'status': 400, 'errors': 'Token expirado'}), 400
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            logger.error(f'Token inválido: {str(e)}')
             return flask.jsonify({'status': 400, 'errors': 'Token inválido'}), 400
 
         return f(current_user, *args, **kwargs)
@@ -137,11 +147,9 @@ def token_required(f):
 @app.route('/dbproj/user', methods=['PUT'])
 def login():
     logger.info('PUT /dbproj/user')
-    payload = flask.request.get_json()
-
+    payload = flask.request.get_json(silent=True)
     if not payload or 'username' not in payload or 'password' not in payload:
         return flask.jsonify({'status': 400, 'errors': 'Username e password são obrigatórios'}), 400
-
     username = payload['username']
     password = payload['password']
 
@@ -179,6 +187,93 @@ def login():
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT /dbproj/user - error: {error}')
         response = {'status': 500, 'errors': str(error)}
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 2 — Adicionar Administrador (Super Admin only)
+##
+## Cria um novo administrador (pessoa + administrador).
+## Apenas utilizadores com o token de Super Admin podem aceder.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/register/admin
+## Body: {"name": "Nome", "email": "admin@exemplo.pt", "password": "secret"}
+## Resposta: {"status": 200, "results": {"user_id": <id>}}
+##
+@app.route('/dbproj/register/admin', methods=['PUT'])
+@token_required
+def add_administrator(current_user):
+    logger.info('PUT /dbproj/register/admin')
+
+    if not current_user.get('is_super'):
+        logger.warning(f'Acesso negado para {current_user["username"]}')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas o Super Admin pode criar administradores'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    name = payload.get('name')
+    email = payload.get('email')
+    password = payload.get('password')
+
+    if not all([name, email, password]):
+        return flask.jsonify({'status': 400, 'errors': 'Campos name, email e password são obrigatórios'}), 400
+
+    username = email
+    password_hash = password
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("SELECT id FROM pessoa WHERE email = %s OR username = %s", (email, username))
+        if cur.fetchone():
+            return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
+
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
+        new_id = cur.fetchone()[0]
+
+        statement = '''
+            INSERT INTO pessoa (id, nome, email, username, password_hash)
+            VALUES (%s, %s, %s, %s, %s)
+        '''
+        cur.execute(statement, (new_id, name, email, username, password_hash))
+
+        cur.execute(
+            "INSERT INTO administrador (is_super, pessoa_id) VALUES (FALSE, %s)",
+            (new_id,)
+        )
+
+        conn.commit()
+        logger.debug(f'Administrador criado: id={new_id}, nome={name}, email={email}')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'user_id': new_id}
+        }
+
+    except psycopg2.IntegrityError as error:
+        conn.rollback()
+        logger.error(f'Erro de integridade: {error}')
+        response = {
+            'status': StatusCodes['api_error'],
+            'errors': 'Email ou username já em uso'
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'PUT /dbproj/register/admin - erro: {error}')
+        response = {
+            'status': StatusCodes['internal_error'],
+            'errors': str(error)
+        }
+
     finally:
         if conn:
             conn.close()
