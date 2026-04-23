@@ -20,6 +20,10 @@ import flask
 import logging
 import psycopg2
 import time
+import jwt
+import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 
 app = flask.Flask(__name__)
 

@@ -28,7 +28,7 @@ CREATE TABLE trajeto (
 	plataforma_sentido		 VARCHAR(512),
 	linha_id			 BIGINT,
 	paragem_id			 BIGINT NOT NULL,
-	PRIMARY KEY(sequencia, linha_id)
+	PRIMARY KEY(sequencia, linha_id, plataforma_sentido)
 );
 
 CREATE TABLE linha (
@@ -144,7 +144,8 @@ CREATE TABLE interrupcao_linha (
 );
 
 ALTER TABLE cliente ADD CONSTRAINT cliente_fk1 FOREIGN KEY (pessoa_id) REFERENCES pessoa(id);
-ALTER TABLE pessoa ADD UNIQUE (email, username);
+ALTER TABLE pessoa ADD UNIQUE (email);
+ALTER TABLE pessoa ADD UNIQUE (username);
 ALTER TABLE administrador ADD CONSTRAINT administrador_fk1 FOREIGN KEY (pessoa_id) REFERENCES pessoa(id);
 ALTER TABLE trajeto ADD CONSTRAINT trajeto_fk1 FOREIGN KEY (linha_id) REFERENCES linha(id);
 ALTER TABLE trajeto ADD CONSTRAINT trajeto_fk2 FOREIGN KEY (paragem_id) REFERENCES paragem(id);
