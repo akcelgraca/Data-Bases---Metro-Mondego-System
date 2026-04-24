@@ -303,3 +303,24 @@ DEBUG:logger:Administrador criado: id=9, nome=Joaoadmin, email=joaoadmin@email.p
 INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:20:29] "PUT /dbproj/register/admin HTTP/1.1" 200 -
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 170-458-435
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:35:11] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3NzAzNDExMX0.XyP39tcCTXxweS8oPl55RxYDuXvUwN6HqIfI7o85fBk
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/register/customer
+WARNING:logger:Campos obrigatórios em falta: {'name': 'Maria Silva', 'nif': '987654321', 'phone': '910111222', 'email': 'maria@email.pt', 'password': 'cliente123'}
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:35:29] "[31m[1mPOST /dbproj/register/customer HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3NzAzNDExMX0.XyP39tcCTXxweS8oPl55RxYDuXvUwN6HqIfI7o85fBk
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/register/customer
+DEBUG:logger:Cliente criado: id=10, nome=Maria Silva, email=maria@email.pt
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:36:07] "POST /dbproj/register/customer HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080

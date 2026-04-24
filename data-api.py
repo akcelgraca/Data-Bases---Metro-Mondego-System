@@ -288,6 +288,107 @@ def add_administrator(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 3 — Adicionar Cliente (Admin only)
+##
+## Cria um novo cliente (pessoa + cliente).
+## Apenas utilizadores com o token de Administrador podem aceder.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/register/customer
+## Body: {"name": "Customer Name", "nif": "123456789", "telefone": "910000000", "email": "customer@email.pt", "password": "secret"}
+## Resposta: {"status": 200, "results": {"user_id": <id>}}
+##
+
+@app.route('/dbproj/register/customer', methods=['POST'])
+@token_required
+def add_customer(current_user):
+    logger.info('POST /dbproj/register/customer')
+
+    # 1. Verificar permissão – qualquer administrador pode criar clientes
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem criar clientes'}), 400
+
+    # 2. Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        logger.warning('Payload inválido ou ausente')
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    name = payload.get('name')
+    email = payload.get('email')
+    password = payload.get('password')
+    nif = payload.get('nif')
+    telefone = payload.get('telefone')
+
+    if not all([name, email, password, nif, telefone]):
+        logger.warning(f'Campos obrigatórios em falta: {payload}')
+        return flask.jsonify({'status': 400, 'errors': 'Campos name, email, password, nif e telefone são obrigatórios'}), 400
+
+    # 3. Preparar dados
+    username = email                     # design: username = email
+    password_hash = password            # ainda sem hashing (testes)
+    initial_wallet = 0.00               # cliente começa com saldo zero
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar unicidade do email/username
+        cur.execute("SELECT id FROM pessoa WHERE email = %s OR username = %s", (email, username))
+        if cur.fetchone():
+            logger.warning(f'Email/username já em uso: {email}')
+            return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
+
+        # Gerar novo ID (simulação de auto-incremento)
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
+        new_id = cur.fetchone()[0]
+
+        # Inserir em pessoa
+        statement = '''
+            INSERT INTO pessoa (id, nome, email, username, password_hash)
+            VALUES (%s, %s, %s, %s, %s)
+        '''
+        cur.execute(statement, (new_id, name, email, username, password_hash))
+
+        # Inserir em cliente (wallet inicial = 0.0)
+        cur.execute(
+            "INSERT INTO cliente (wallet, nif, telefone, pessoa_id) VALUES (%s, %s, %s, %s)",
+            (initial_wallet, nif, telefone, new_id)
+        )
+
+        conn.commit()
+        logger.debug(f'Cliente criado: id={new_id}, nome={name}, email={email}')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'user_id': new_id}
+        }
+
+    except psycopg2.IntegrityError as error:
+        conn.rollback()
+        logger.error(f'Erro de integridade: {error}')
+        response = {
+            'status': StatusCodes['api_error'],
+            'errors': 'Email ou username já em uso'
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/register/customer - erro: {error}')
+        response = {
+            'status': StatusCodes['internal_error'],
+            'errors': str(error)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 @app.route('/')
 def landing_page():
     return """
