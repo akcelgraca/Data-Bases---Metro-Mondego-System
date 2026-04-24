@@ -190,3 +190,116 @@ DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
 INFO:werkzeug:127.0.0.1 - - [23/Apr/2026 15:56:59] "PUT /dbproj/user HTTP/1.1" 200 -
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 170-458-435
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:25:54] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAyOTk1NH0.V31twAS78Oi-8Auzv9ADh4lPIpdv5QuoHDB_e8ygVKA
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:26:36] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 170-458-435
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:49:14] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:17] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:18] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:19] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:20] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:21] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:21] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:22] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMTM1NH0.sQb-6N7EmQ8zdlFsggf4b5BjymQzcE9dJzHfg_sYJiI
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 10:50:22] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 170-458-435
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 170-458-435
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:04:30] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMjI3MH0.LQAH3Hl4GFJIlCRuSMiv1Hh9YTdPG26YHx6WVpfbtvk
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+DEBUG:logger:Content-Type recebido: application/json; is_json=True
+WARNING:logger:Payload inválido ou ausente. Body bruto recebido: ''
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:05:39] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMjI3MH0.LQAH3Hl4GFJIlCRuSMiv1Hh9YTdPG26YHx6WVpfbtvk
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+DEBUG:logger:Content-Type recebido: application/json; is_json=True
+WARNING:logger:Payload inválido ou ausente. Body bruto recebido: ''
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:05:40] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMjI3MH0.LQAH3Hl4GFJIlCRuSMiv1Hh9YTdPG26YHx6WVpfbtvk
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+DEBUG:logger:Content-Type recebido: application/json; is_json=True
+WARNING:logger:Payload inválido ou ausente. Body bruto recebido: ''
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:05:41] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMjI3MH0.LQAH3Hl4GFJIlCRuSMiv1Hh9YTdPG26YHx6WVpfbtvk
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+DEBUG:logger:Content-Type recebido: application/json; is_json=True
+WARNING:logger:Payload inválido ou ausente. Body bruto recebido: ''
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:05:42] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:06:42] "[31m[1mPOST /dbproj/register/admin HTTP/1.1[0m" 405 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMjI3MH0.LQAH3Hl4GFJIlCRuSMiv1Hh9YTdPG26YHx6WVpfbtvk
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+DEBUG:logger:Content-Type recebido: application/json; is_json=True
+WARNING:logger:Payload inválido ou ausente. Body bruto recebido: ''
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:07:17] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:20:12] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMzIxMn0.sRvVCdtSy7MWz78NuquevcsCHcBN21SXILHv4gyfxeA
+DEBUG:logger:Token válido para user=superadmin
+INFO:logger:PUT /dbproj/register/admin
+DEBUG:logger:Content-Type recebido: application/json; is_json=True
+DEBUG:logger:Administrador criado: id=9, nome=Joaoadmin, email=joaoadmin@email.pt
+INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 11:20:29] "PUT /dbproj/register/admin HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080

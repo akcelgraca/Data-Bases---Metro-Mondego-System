@@ -213,8 +213,14 @@ def add_administrator(current_user):
         logger.warning(f'Acesso negado para {current_user["username"]}')
         return flask.jsonify({'status': 400, 'errors': 'Apenas o Super Admin pode criar administradores'}), 400
 
+    logger.debug(
+        f'Content-Type recebido: {flask.request.content_type}; '
+        f'is_json={flask.request.is_json}'
+    )
     payload = flask.request.get_json(silent=True)
     if not payload:
+        raw_body = flask.request.get_data(as_text=True)
+        logger.warning(f'Payload inválido ou ausente. Body bruto recebido: {raw_body!r}')
         return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
 
     name = payload.get('name')
@@ -222,6 +228,7 @@ def add_administrator(current_user):
     password = payload.get('password')
 
     if not all([name, email, password]):
+        logger.warning(f'Campos obrigatórios em falta no payload: {payload}')
         return flask.jsonify({'status': 400, 'errors': 'Campos name, email e password são obrigatórios'}), 400
 
     username = email
@@ -233,6 +240,7 @@ def add_administrator(current_user):
     try:
         cur.execute("SELECT id FROM pessoa WHERE email = %s OR username = %s", (email, username))
         if cur.fetchone():
+            logger.warning(f'Tentativa de registo com email/username já existente: {email}')
             return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
 
         cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
