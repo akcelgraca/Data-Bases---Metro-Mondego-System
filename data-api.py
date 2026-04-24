@@ -389,6 +389,92 @@ def add_customer(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 4 — Atualizar configurações de operação de uma linha (Admin only)
+##
+## Atualiza os parâmetros operacionais de uma linha (hora de início, fim, frequência, capacidade).
+## Apenas administradores podem aceder.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/line_operation/{line_id}
+## Body: {"start_time": "07:30:00", "end_time": "21:00:00", "frequency_minutes": 20, "vehicle_capacity": 50}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/line_operation/<int:line_id>', methods=['PUT'])
+@token_required
+def update_line_operation(current_user, line_id):
+    logger.info('PUT /dbproj/line_operation/%s', line_id)
+
+    # 1. Verificar permissão – qualquer administrador
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem alterar linhas'}), 400
+
+    # 2. Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    start_time = payload.get('start_time')
+    end_time = payload.get('end_time')
+    frequency = payload.get('frequency_minutes')
+    capacity = payload.get('vehicle_capacity')
+
+    if not all([start_time, end_time, frequency is not None, capacity is not None]):
+        logger.warning(f'Campos obrigatórios em falta: {payload}')
+        return flask.jsonify({'status': 400, 'errors': 'Campos start_time, end_time, frequency_minutes e vehicle_capacity são obrigatórios'}), 400
+
+    # Validar que frequency e capacity são inteiros positivos
+    try:
+        frequency = int(frequency)
+        capacity = int(capacity)
+        if frequency <= 0 or capacity <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'frequency_minutes e vehicle_capacity devem ser inteiros positivos'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar se a linha existe
+        cur.execute("SELECT id FROM linha WHERE id = %s", (line_id,))
+        if cur.fetchone() is None:
+            return flask.jsonify({'status': 400, 'errors': f'Linha com id {line_id} não encontrada'}), 400
+
+        # Atualizar os campos
+        statement = """
+            UPDATE linha
+            SET hora_inicio = %s,
+                hora_fim = %s,
+                frequencia = %s,
+                capacidade_default = %s
+            WHERE id = %s
+        """
+        cur.execute(statement, (start_time, end_time, frequency, capacity, line_id))
+
+        if cur.rowcount == 0:
+            # Não deveria acontecer porque verificámos a existência, mas por segurança
+            conn.rollback()
+            return flask.jsonify({'status': 400, 'errors': 'Nenhuma linha atualizada'}), 400
+
+        conn.commit()
+        logger.debug(f'Linha {line_id} atualizada: start={start_time}, end={end_time}, freq={frequency}, cap={capacity}')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'PUT /dbproj/line_operation/{line_id} - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 @app.route('/')
 def landing_page():
     return """
