@@ -475,6 +475,87 @@ def update_line_operation(current_user, line_id):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 5 — Atualizar preço de um tipo de bilhete (Admin only)
+##
+## Insere uma nova entrada no histórico de preços para o tipo de bilhete indicado.
+## Apenas administradores podem aceder.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/fares/{fare_id}
+## Body: {"price": 2.75, "effective_from": "2025-06-01"}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/fares/<int:fare_id>', methods=['PUT'])
+@token_required
+def update_fare_price(current_user, fare_id):
+    logger.info('PUT /dbproj/fares/%s', fare_id)
+
+    # 1. Verificar permissão – apenas administradores
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem alterar tarifas'}), 400
+
+    # 2. Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    price = payload.get('price')
+    effective_from = payload.get('effective_from')
+
+    if not price or not effective_from:
+        return flask.jsonify({'status': 400, 'errors': 'Campos price e effective_from são obrigatórios'}), 400
+
+    # Validar price (número positivo)
+    try:
+        price = float(price)
+        if price <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'price deve ser um número positivo'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar se o tipo_bilhete existe
+        cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE id_tipo = %s", (fare_id,))
+        if cur.fetchone() is None:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete com id {fare_id} não encontrado'}), 400
+
+        # Inserir novo preço no histórico (a chave primária composta garante que não há duplicados da mesma data)
+        cur.execute(
+            "INSERT INTO historico_preco (preco, data_efetiva, tipo_bilhete_id_tipo) VALUES (%s, %s, %s)",
+            (price, effective_from, fare_id)
+        )
+
+        conn.commit()
+        logger.debug(f'Preço atualizado para tipo_bilhete {fare_id}: {price} a partir de {effective_from}')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except psycopg2.IntegrityError as error:
+        conn.rollback()
+        logger.error(f'Erro de integridade: {error}')
+        # Possível duplicado (mesma data para o mesmo tipo) ou violação de FK
+        if 'unique' in str(error).lower():
+            response = {'status': StatusCodes['api_error'], 'errors': 'Já existe um preço para esta data e tipo de bilhete'}
+        else:
+            response = {'status': StatusCodes['api_error'], 'errors': 'Erro de integridade'}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'PUT /dbproj/fares/{fare_id} - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 @app.route('/')
 def landing_page():
     return """
