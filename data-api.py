@@ -79,8 +79,15 @@ def generate_token(user_id, username, is_admin, is_super=False):
         'is_super': is_super,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)
     }
+
     token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+
+    # compatibilidade com versões diferentes do PyJWT
+    if isinstance(token, bytes):
+        token = token.decode('utf-8')
+
     return token
+
 
 
 def token_required(f):
@@ -96,6 +103,7 @@ def token_required(f):
 
         if 'Authorization' in flask.request.headers:
             auth_header = flask.request.headers['Authorization']
+            logger.debug(f'Authorization header recebido: {auth_header}')
             parts = auth_header.split()
             if len(parts) == 2 and parts[0] == 'Bearer':
                 token = parts[1]
@@ -106,9 +114,11 @@ def token_required(f):
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
             current_user = data
+            logger.debug(f'Token válido para user={current_user.get("username")}')
         except jwt.ExpiredSignatureError:
             return flask.jsonify({'status': 400, 'errors': 'Token expirado'}), 400
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            logger.error(f'Token inválido: {str(e)}')
             return flask.jsonify({'status': 400, 'errors': 'Token inválido'}), 400
 
         return f(current_user, *args, **kwargs)
@@ -137,11 +147,9 @@ def token_required(f):
 @app.route('/dbproj/user', methods=['PUT'])
 def login():
     logger.info('PUT /dbproj/user')
-    payload = flask.request.get_json()
-
+    payload = flask.request.get_json(silent=True)
     if not payload or 'username' not in payload or 'password' not in payload:
         return flask.jsonify({'status': 400, 'errors': 'Username e password são obrigatórios'}), 400
-
     username = payload['username']
     password = payload['password']
 
@@ -179,6 +187,369 @@ def login():
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'PUT /dbproj/user - error: {error}')
         response = {'status': 500, 'errors': str(error)}
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 2 — Adicionar Administrador (Super Admin only)
+##
+## Cria um novo administrador (pessoa + administrador).
+## Apenas utilizadores com o token de Super Admin podem aceder.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/register/admin
+## Body: {"name": "Nome", "email": "admin@exemplo.pt", "password": "secret"}
+## Resposta: {"status": 200, "results": {"user_id": <id>}}
+##
+@app.route('/dbproj/register/admin', methods=['PUT'])
+@token_required
+def add_administrator(current_user):
+    logger.info('PUT /dbproj/register/admin')
+
+    if not current_user.get('is_super'):
+        logger.warning(f'Acesso negado para {current_user["username"]}')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas o Super Admin pode criar administradores'}), 400
+
+    logger.debug(
+        f'Content-Type recebido: {flask.request.content_type}; '
+        f'is_json={flask.request.is_json}'
+    )
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        raw_body = flask.request.get_data(as_text=True)
+        logger.warning(f'Payload inválido ou ausente. Body bruto recebido: {raw_body!r}')
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    name = payload.get('name')
+    email = payload.get('email')
+    password = payload.get('password')
+
+    if not all([name, email, password]):
+        logger.warning(f'Campos obrigatórios em falta no payload: {payload}')
+        return flask.jsonify({'status': 400, 'errors': 'Campos name, email e password são obrigatórios'}), 400
+
+    username = email
+    password_hash = password
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("SELECT id FROM pessoa WHERE email = %s OR username = %s", (email, username))
+        if cur.fetchone():
+            logger.warning(f'Tentativa de registo com email/username já existente: {email}')
+            return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
+
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
+        new_id = cur.fetchone()[0]
+
+        statement = '''
+            INSERT INTO pessoa (id, nome, email, username, password_hash)
+            VALUES (%s, %s, %s, %s, %s)
+        '''
+        cur.execute(statement, (new_id, name, email, username, password_hash))
+
+        cur.execute(
+            "INSERT INTO administrador (is_super, pessoa_id) VALUES (FALSE, %s)",
+            (new_id,)
+        )
+
+        conn.commit()
+        logger.debug(f'Administrador criado: id={new_id}, nome={name}, email={email}')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'user_id': new_id}
+        }
+
+    except psycopg2.IntegrityError as error:
+        conn.rollback()
+        logger.error(f'Erro de integridade: {error}')
+        response = {
+            'status': StatusCodes['api_error'],
+            'errors': 'Email ou username já em uso'
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'PUT /dbproj/register/admin - erro: {error}')
+        response = {
+            'status': StatusCodes['internal_error'],
+            'errors': str(error)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 3 — Adicionar Cliente (Admin only)
+##
+## Cria um novo cliente (pessoa + cliente).
+## Apenas utilizadores com o token de Administrador podem aceder.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/register/customer
+## Body: {"name": "Customer Name", "nif": "123456789", "telefone": "910000000", "email": "customer@email.pt", "password": "secret"}
+## Resposta: {"status": 200, "results": {"user_id": <id>}}
+##
+
+@app.route('/dbproj/register/customer', methods=['POST'])
+@token_required
+def add_customer(current_user):
+    logger.info('POST /dbproj/register/customer')
+
+    # 1. Verificar permissão – qualquer administrador pode criar clientes
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem criar clientes'}), 400
+
+    # 2. Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        logger.warning('Payload inválido ou ausente')
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    name = payload.get('name')
+    email = payload.get('email')
+    password = payload.get('password')
+    nif = payload.get('nif')
+    telefone = payload.get('telefone')
+
+    if not all([name, email, password, nif, telefone]):
+        logger.warning(f'Campos obrigatórios em falta: {payload}')
+        return flask.jsonify({'status': 400, 'errors': 'Campos name, email, password, nif e telefone são obrigatórios'}), 400
+
+    # 3. Preparar dados
+    username = email                     # design: username = email
+    password_hash = password            # ainda sem hashing (testes)
+    initial_wallet = 0.00               # cliente começa com saldo zero
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar unicidade do email/username
+        cur.execute("SELECT id FROM pessoa WHERE email = %s OR username = %s", (email, username))
+        if cur.fetchone():
+            logger.warning(f'Email/username já em uso: {email}')
+            return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
+
+        # Gerar novo ID (simulação de auto-incremento)
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
+        new_id = cur.fetchone()[0]
+
+        # Inserir em pessoa
+        statement = '''
+            INSERT INTO pessoa (id, nome, email, username, password_hash)
+            VALUES (%s, %s, %s, %s, %s)
+        '''
+        cur.execute(statement, (new_id, name, email, username, password_hash))
+
+        # Inserir em cliente (wallet inicial = 0.0)
+        cur.execute(
+            "INSERT INTO cliente (wallet, nif, telefone, pessoa_id) VALUES (%s, %s, %s, %s)",
+            (initial_wallet, nif, telefone, new_id)
+        )
+
+        conn.commit()
+        logger.debug(f'Cliente criado: id={new_id}, nome={name}, email={email}')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'user_id': new_id}
+        }
+
+    except psycopg2.IntegrityError as error:
+        conn.rollback()
+        logger.error(f'Erro de integridade: {error}')
+        response = {
+            'status': StatusCodes['api_error'],
+            'errors': 'Email ou username já em uso'
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/register/customer - erro: {error}')
+        response = {
+            'status': StatusCodes['internal_error'],
+            'errors': str(error)
+        }
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 4 — Atualizar configurações de operação de uma linha (Admin only)
+##
+## Atualiza os parâmetros operacionais de uma linha (hora de início, fim, frequência, capacidade).
+## Apenas administradores podem aceder.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/line_operation/{line_id}
+## Body: {"start_time": "07:30:00", "end_time": "21:00:00", "frequency_minutes": 20, "vehicle_capacity": 50}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/line_operation/<int:line_id>', methods=['PUT'])
+@token_required
+def update_line_operation(current_user, line_id):
+    logger.info('PUT /dbproj/line_operation/%s', line_id)
+
+    # 1. Verificar permissão – qualquer administrador
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem alterar linhas'}), 400
+
+    # 2. Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    start_time = payload.get('start_time')
+    end_time = payload.get('end_time')
+    frequency = payload.get('frequency_minutes')
+    capacity = payload.get('vehicle_capacity')
+
+    if not all([start_time, end_time, frequency is not None, capacity is not None]):
+        logger.warning(f'Campos obrigatórios em falta: {payload}')
+        return flask.jsonify({'status': 400, 'errors': 'Campos start_time, end_time, frequency_minutes e vehicle_capacity são obrigatórios'}), 400
+
+    # Validar que frequency e capacity são inteiros positivos
+    try:
+        frequency = int(frequency)
+        capacity = int(capacity)
+        if frequency <= 0 or capacity <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'frequency_minutes e vehicle_capacity devem ser inteiros positivos'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar se a linha existe
+        cur.execute("SELECT id FROM linha WHERE id = %s", (line_id,))
+        if cur.fetchone() is None:
+            return flask.jsonify({'status': 400, 'errors': f'Linha com id {line_id} não encontrada'}), 400
+
+        # Atualizar os campos
+        statement = """
+            UPDATE linha
+            SET hora_inicio = %s,
+                hora_fim = %s,
+                frequencia = %s,
+                capacidade_default = %s
+            WHERE id = %s
+        """
+        cur.execute(statement, (start_time, end_time, frequency, capacity, line_id))
+
+        if cur.rowcount == 0:
+            # Não deveria acontecer porque verificámos a existência, mas por segurança
+            conn.rollback()
+            return flask.jsonify({'status': 400, 'errors': 'Nenhuma linha atualizada'}), 400
+
+        conn.commit()
+        logger.debug(f'Linha {line_id} atualizada: start={start_time}, end={end_time}, freq={frequency}, cap={capacity}')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'PUT /dbproj/line_operation/{line_id} - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 5 — Atualizar preço de um tipo de bilhete (Admin only)
+##
+## Insere uma nova entrada no histórico de preços para o tipo de bilhete indicado.
+## Apenas administradores podem aceder.
+##
+## Método: PUT
+## URL: http://localhost:8080/dbproj/fares/{fare_id}
+## Body: {"price": 2.75, "effective_from": "2025-06-01"}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/fares/<int:fare_id>', methods=['PUT'])
+@token_required
+def update_fare_price(current_user, fare_id):
+    logger.info('PUT /dbproj/fares/%s', fare_id)
+
+    # 1. Verificar permissão – apenas administradores
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem alterar tarifas'}), 400
+
+    # 2. Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    price = payload.get('price')
+    effective_from = payload.get('effective_from')
+
+    if not price or not effective_from:
+        return flask.jsonify({'status': 400, 'errors': 'Campos price e effective_from são obrigatórios'}), 400
+
+    # Validar price (número positivo)
+    try:
+        price = float(price)
+        if price <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'price deve ser um número positivo'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar se o tipo_bilhete existe
+        cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE id_tipo = %s", (fare_id,))
+        if cur.fetchone() is None:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete com id {fare_id} não encontrado'}), 400
+
+        # Inserir novo preço no histórico (a chave primária composta garante que não há duplicados da mesma data)
+        cur.execute(
+            "INSERT INTO historico_preco (preco, data_efetiva, tipo_bilhete_id_tipo) VALUES (%s, %s, %s)",
+            (price, effective_from, fare_id)
+        )
+
+        conn.commit()
+        logger.debug(f'Preço atualizado para tipo_bilhete {fare_id}: {price} a partir de {effective_from}')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except psycopg2.IntegrityError as error:
+        conn.rollback()
+        logger.error(f'Erro de integridade: {error}')
+        # Possível duplicado (mesma data para o mesmo tipo) ou violação de FK
+        if 'unique' in str(error).lower():
+            response = {'status': StatusCodes['api_error'], 'errors': 'Já existe um preço para esta data e tipo de bilhete'}
+        else:
+            response = {'status': StatusCodes['api_error'], 'errors': 'Erro de integridade'}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'PUT /dbproj/fares/{fare_id} - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
     finally:
         if conn:
             conn.close()
