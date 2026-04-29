@@ -556,6 +556,84 @@ def update_fare_price(current_user, fare_id):
 
     return flask.jsonify(response)
 
+
+##
+## Endpoint 6 - Broadcast Aviso
+##
+## Envia um aviso geral para todos os utilizadores
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/notices/broadcast
+## Body: {"title": "Strike Notice", "message": "Possible delays between 10:00 and 13:00"}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/notices/broadcast', methods=['POST'])
+@token_required
+def broadcast_notice(current_user):
+    logger.info('POST /dbproj/notices/broadcast')
+
+    # Verificar permissão - apenas administradores podem enviar avisos
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem enviar avisos'}), 400
+
+    # Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON invalido'}), 400
+
+    title = payload.get('title')
+    message = payload.get('message')
+
+    if not title or not message:
+        return flask.jsonify({'status': 400, 'errors': 'Campos title e message são obrigatórios'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Gerar novo ID para o aviso
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM aviso")
+        new_aviso_id = cur.fetchone()[0]
+
+        admin_id = current_user['user_id']
+
+        # Inserir o aviso na tabela
+        insert_aviso_query = """
+            INSERT INTO aviso (id, titulo, mensagem, data_emissao, administrador_pessoa_id)
+            VALUES (%s, %s, %s, CURRENT_DATE, %s)
+        """
+        curr.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
+
+        # Broadcast para todos os clientes inserindo em aviso_cliente
+        insert_aviso_cliente_query = """
+            INSERT INTO aviso_cliente (data_entrega, data_leitura, lido, aviso_id, cliente_pessoa_id)
+            SELECT CURRENT_DATE, NULL, FALSE, %s, pessoa_id
+            FROM cliente
+        """
+
+        cur.execute(insert_aviso_cliente_query, (new_aviso_id,))
+
+        # Commit da transação após ambas as operações terem sido executadas
+        conn.commit()
+        logger.debug(f'Aviso broadcast criado: id={new_aviso_id}, title={title} enviado para todos os clientes pelo admin id={admin_id}.')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/notices/broadcast - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+
+
 @app.route('/')
 def landing_page():
     return """
