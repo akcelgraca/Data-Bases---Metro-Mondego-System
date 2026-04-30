@@ -148,9 +148,13 @@ def token_required(f):
 def login():
     logger.info('PUT /dbproj/user')
     payload = flask.request.get_json(silent=True)
+
+    # validação do payload - verificar que é JSON e que tem os campos necessários
     if not payload or 'username' not in payload or 'password' not in payload:
         return flask.jsonify({'status': 400, 'errors': 'Username e password são obrigatórios'}), 400
-    username = payload['username']
+
+    # guardar username e password em variáveis
+    username = payload['username']  
     password = payload['password']
 
     conn = db_connection()
