@@ -179,7 +179,6 @@ def login():
         user_id, db_username, db_password_hash, is_admin, is_super = user
 
         # Comparação direta da password (os dados de teste têm passwords em texto simples).
-        # Numa versão de produção, usaríamos bcrypt ou argon2 para comparar hashes seguros.
         if db_password_hash != password:
             return flask.jsonify({'status': 400, 'errors': 'Credenciais inválidas'}), 400
 
