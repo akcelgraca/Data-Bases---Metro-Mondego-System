@@ -189,6 +189,8 @@ Import `metro_postman_collection.json` into Postman and run the requests in orde
 ## Authors
 
 - **Akcel Graça** — [LinkedIn](https://www.linkedin.com/in/akcelgraça) · [GitHub](https://github.com/akcelgraca)
+- **Martim**
+- **Tiago**
 
 *Databases Course — Licenciatura em Engenharia Informática, FCTUC, University of Coimbra*
 *2025/2026*
