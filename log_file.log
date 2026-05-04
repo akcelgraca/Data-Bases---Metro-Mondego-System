@@ -379,3 +379,129 @@ DEBUG:logger:Preço atualizado para tipo_bilhete 1: 2.75 a partir de 2025-07-01
 INFO:werkzeug:127.0.0.1 - - [24/Apr/2026 12:02:22] "PUT /dbproj/fares/1 HTTP/1.1" 200 -
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:logger:PUT /dbproj/user
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 01:39:17] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:logger:PUT /dbproj/user
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 01:55:30] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:logger:PUT /dbproj/user
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 01:56:41] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:logger:PUT /dbproj/user
+ERROR:logger:PUT /dbproj/user - error: permission denied for table pessoa
+
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:00:35] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:logger:PUT /dbproj/user
+ERROR:logger:PUT /dbproj/user - error: module 'jwt' has no attribute 'encode'
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:04:04] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 141-208-295
+INFO:logger:PUT /dbproj/user
+ERROR:logger:PUT /dbproj/user - error: module 'jwt' has no attribute 'encode'
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:07:37] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:PUT /dbproj/user
+ERROR:logger:PUT /dbproj/user - error: module 'jwt' has no attribute 'encode'
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:07:42] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 138-863-016
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:11:13] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMzIxMn0.sRvVCdtSy7MWz78NuquevcsCHcBN21SXILHv4gyfxeA
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:11:31] "[31m[1mPUT /dbproj/register/admin HTTP/1.1[0m" 400 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJ1c2VybmFtZSI6ImJydW5vc2lsdmEiLCJpc19hZG1pbiI6ZmFsc2UsImlzX3N1cGVyIjpudWxsLCJleHAiOjE3NzcwMzQzMjl9.3zpzQaCgJpfpFlWtOSHWBHyHvOH2laMcH45f7kZGVk8
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 02:11:52] "[31m[1mPOST /dbproj/register/customer HTTP/1.1[0m" 400 -
+INFO:werkzeug: * Detected change in 'C:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 138-863-016
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 245-116-123
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 09:24:04] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 138-863-016
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para superadmin, admin=True, super=True
+INFO:werkzeug:127.0.0.1 - - [30/Apr/2026 09:44:33] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\\2nd_semester\\BD\\Data-Bases---Metro-Mondego-System\\data-api.py', reloading
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 138-863-016

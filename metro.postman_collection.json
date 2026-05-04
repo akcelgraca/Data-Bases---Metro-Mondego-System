@@ -1,0 +1,204 @@
+{
+	"info": {
+		"_postman_id": "bfd02862-9022-4880-87b2-89434f7d6e7e",
+		"name": "metro",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "51043830",
+		"_collection_link": "https://akceldagraca-9424866.postman.co/workspace/Akcel's-Workspace~fc77c753-2227-4843-8de0-181caf3aff45/collection/51043830-bfd02862-9022-4880-87b2-89434f7d6e7e?action=share&source=collection_link&creator=51043830"
+	},
+	"item": [
+		{
+			"name": "1- User Authentication",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"hash_admin1\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/dbproj/user",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"dbproj",
+						"user"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2- Add Administrator",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJpc19hZG1pbiI6dHJ1ZSwiaXNfc3VwZXIiOnRydWUsImV4cCI6MTc3NzAzMzIxMn0.sRvVCdtSy7MWz78NuquevcsCHcBN21SXILHv4gyfxeA",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Joaoadmin\",\n  \"email\": \"joaoadmin@email.pt\",\n  \"password\": \"12345\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/dbproj/register/admin",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"dbproj",
+						"register",
+						"admin"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3- Add Customer",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJ1c2VybmFtZSI6ImJydW5vc2lsdmEiLCJpc19hZG1pbiI6ZmFsc2UsImlzX3N1cGVyIjpudWxsLCJleHAiOjE3NzcwMzQzMjl9.3zpzQaCgJpfpFlWtOSHWBHyHvOH2laMcH45f7kZGVk8",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Maria Silva2\",\n    \"nif\": \"987654324\",\n    \"telefone\": \"910111227\",\n    \"email\": \"maria2@email.pt\",\n    \"password\": \"cliente124\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/dbproj/register/customer",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"dbproj",
+						"register",
+						"customer"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4- Update line operation settings",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3NzAzNDkyMn0.Lf4h5xNxgCUddYuePkvtkiWYyB-rjqdlCeLKn69tsq8",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"start_time\": \"08:00:00\",\n    \"end_time\": \"22:00:00\",\n    \"frequency_minutes\": 15,\n    \"vehicle_capacity\": 60\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/dbproj/line_operation/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"dbproj",
+						"line_operation",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5- Update fare price",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3NzAzNTU4MX0.lOrnu_uKMw_aHoCoHJ75snQ_vw43Ir6JfjJpzeSEa-E",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"price\": 2.75,\n    \"effective_from\": \"2025-07-01\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/dbproj/fares/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"dbproj",
+						"fares",
+						"1"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

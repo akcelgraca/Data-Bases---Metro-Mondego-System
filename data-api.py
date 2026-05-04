@@ -148,9 +148,13 @@ def token_required(f):
 def login():
     logger.info('PUT /dbproj/user')
     payload = flask.request.get_json(silent=True)
+
+    # validação do payload - verificar que é JSON e que tem os campos necessários
     if not payload or 'username' not in payload or 'password' not in payload:
         return flask.jsonify({'status': 400, 'errors': 'Username e password são obrigatórios'}), 400
-    username = payload['username']
+
+    # guardar username e password em variáveis
+    username = payload['username']  
     password = payload['password']
 
     conn = db_connection()
@@ -175,7 +179,6 @@ def login():
         user_id, db_username, db_password_hash, is_admin, is_super = user
 
         # Comparação direta da password (os dados de teste têm passwords em texto simples).
-        # Numa versão de produção, usaríamos bcrypt ou argon2 para comparar hashes seguros.
         if db_password_hash != password:
             return flask.jsonify({'status': 400, 'errors': 'Credenciais inválidas'}), 400
 
@@ -555,6 +558,185 @@ def update_fare_price(current_user, fare_id):
             conn.close()
 
     return flask.jsonify(response)
+
+
+##
+## Endpoint 6 - Broadcast Aviso
+##
+## Envia um aviso geral para todos os utilizadores
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/notices/broadcast
+## Body: {"title": "Strike Notice", "message": "Possible delays between 10:00 and 13:00"}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/notices/broadcast', methods=['POST'])
+@token_required
+def broadcast_notice(current_user):
+    logger.info('POST /dbproj/notices/broadcast')
+
+    # Verificar permissão - apenas administradores podem enviar avisos
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]} (não é admin)')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem enviar avisos'}), 400
+
+    # Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON invalido'}), 400
+
+    title = payload.get('title')
+    message = payload.get('message')
+
+    if not title or not message:
+        return flask.jsonify({'status': 400, 'errors': 'Campos title e message são obrigatórios'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Gerar novo ID para o aviso
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM aviso")
+        new_aviso_id = cur.fetchone()[0]
+
+        admin_id = current_user['user_id']
+
+        # Inserir o aviso na tabela
+        insert_aviso_query = """
+            INSERT INTO aviso (id, titulo, mensagem, data_emissao, administrador_pessoa_id)
+            VALUES (%s, %s, %s, CURRENT_DATE, %s)
+        """
+        curr.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
+
+        # Broadcast para todos os clientes inserindo em aviso_cliente
+        insert_aviso_cliente_query = """
+            INSERT INTO aviso_cliente (data_entrega, data_leitura, lido, aviso_id, cliente_pessoa_id)
+            SELECT CURRENT_DATE, NULL, FALSE, %s, pessoa_id
+            FROM cliente
+        """
+
+        cur.execute(insert_aviso_cliente_query, (new_aviso_id,))
+
+        # Commit da transação após ambas as operações terem sido executadas
+        conn.commit()
+        logger.debug(f'Aviso broadcast criado: id={new_aviso_id}, title={title} enviado para todos os clientes pelo admin id={admin_id}.')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/notices/broadcast - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+
+## Endpoint 7 - Criar promoção e regra de desconto (Admin only)
+##
+## Insere uma nova promoção para que os clientes possam usufruir de descontos em bilhetes
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/promotions
+## Body: {
+##  "name": "School Holidays",
+##  "line_id": 1,
+##  "product_type": "daily",
+##  "discount_percent": 20,
+##  "start_date": "2025-07-01",
+##  "end_date": "2025-07-31"
+## }
+## Resposta: {"status": 200, "errors": null, "results": {"promotion_id": id}}
+##
+
+@app.route('/dbproj/promotions', methods=['POST'])
+@token_required
+def create_promotion(current_user):
+    logger.infoq('POST /dbproj/promotions')
+
+    # Verificar permissão - apenas administradores podem criar promoções
+    if not current_user.get('is_admin'):
+        logger.warning(f'Acesso negado para {current_user["username"]}. Não é admin.')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem criar promoções'}), 400
+
+    # Validar payload
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    name = payload.get('name')
+    line_id = payload.get('line_id')
+    product_type = payload.get('product_type')
+    discount_percent = payload.get('discount_percent')
+    start_date = payload.get('start_date')
+    end_date = payload.get('end_date')
+
+    # Validar campos obrigatórios
+    if not all([name, line_id, product_type, discount_percent, start_date, end_date]):
+        return flask.jsonify({'status': 400, 'errors': 'Todos os campos são obrigatórios'}), 400
+
+    # Validar se o desconto é um número inteiro válido
+    try:
+        discount_percent = int(discount_percent)
+        if discount_percent <= 0 or discount_percent > 100:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'discount_percent deve ser um inteiro entre 1 e 100'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Obter o ID do tipo_bilhete a partir da string enviada no payload
+        cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE nome = %s", (product_type,))
+        tipo_bilhete = cur.fetchone()
+        if not tipo_bilhete_row:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não encontrado'}), 400
+        tipo_bilhete_id = tipo_bilhete_row[0]
+
+        # Verificar se a linha existe
+        cur.execute("SELECT id FROM linha WHERE id = %s", (line_id,))
+        if cur.fetchone() is None:
+            return flask.jsonify({'status': 400, 'errors': f'Linha com id {line_id} não encontrada'}), 400
+
+        # Gerar novo ID para a promoção
+        cur.execute("SELECT COALESCE(MAX(id_promocao), 0) + 1 FROM promocao")
+        new_promotion_id = cur.fetchone()[0]
+
+        # Inserir a nova promoção na base de dados
+        insert_query = """
+            INSERT INTO promocao (id_promocao, nome, desconto, data_inicio, data_fim, tipo_bilhete_id_tipo, linha_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+
+        cur.execute(insert_query, (new_promocao_id, name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
+
+        # Efetuar o commit da transação
+        conn.commit()
+        logger.debug(f'Promoção {new_promocao_id} ("{name}") criada com sucesso.')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'promotion_id': new_promocao_id}
+        }
+
+    except psycopg2.Error as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/promotions - erro de base de dados: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+        
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+
 
 @app.route('/')
 def landing_page():
