@@ -505,3 +505,135 @@ INFO:werkzeug: * Detected change in 'c:\\Users\\marti\\Documents\\LEI\\2nd_year\
 INFO:werkzeug: * Restarting with stat
 WARNING:werkzeug: * Debugger is active!
 INFO:werkzeug: * Debugger PIN: 138-863-016
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para diogos, admin=False, super=None
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 14:58:45] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2LCJ1c2VybmFtZSI6ImRpb2dvcyIsImlzX2FkbWluIjpmYWxzZSwiaXNfc3VwZXIiOm51bGwsImV4cCI6MTc3ODQyODcyNX0.MjGJV09ye5Mdj-D8HbG5H_86CW4Nvvp-wA-3OOKWxj8
+DEBUG:logger:Token válido para user=diogos
+INFO:logger:POST /dbproj/notices/broadcast
+WARNING:logger:Acesso negado para diogos (não é admin)
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 14:59:23] "[31m[1mPOST /dbproj/notices/broadcast HTTP/1.1[0m" 400 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 14:59:58] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQyODc5OH0.1bD3n5EX-mR9FRDc5_cWI3f0B9ainEoMgR2I0u7z5EY
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/notices/broadcast
+ERROR:logger:POST /dbproj/notices/broadcast - erro: name 'curr' is not defined
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 15:00:26] "POST /dbproj/notices/broadcast HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQyODc5OH0.1bD3n5EX-mR9FRDc5_cWI3f0B9ainEoMgR2I0u7z5EY
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/notices/broadcast
+ERROR:logger:POST /dbproj/notices/broadcast - erro: name 'curr' is not defined
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 15:01:48] "POST /dbproj/notices/broadcast HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQyODc5OH0.1bD3n5EX-mR9FRDc5_cWI3f0B9ainEoMgR2I0u7z5EY
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/notices/broadcast
+ERROR:logger:POST /dbproj/notices/broadcast - erro: name 'curr' is not defined
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 15:01:49] "POST /dbproj/notices/broadcast HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:38:21] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQzNDcwMX0.sb2f9hlaTg24VMgMpQ3f8psPs3rwjGcl2SPQJcji7Lo
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/notices/broadcast
+DEBUG:logger:Aviso broadcast criado: id=3, title=Strike Notice enviado para todos os clientes pelo admin id=2.
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:38:51] "POST /dbproj/notices/broadcast HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:44:21] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQzNTA2MX0.gJnO801Q8EvndDhulV_xB909Bd_jnW5Vx9OA6v6yNho
+DEBUG:logger:Token válido para user=admin1
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:45:41] "[35m[1mPOST /dbproj/promotions HTTP/1.1[0m" 500 -
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:49:04] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQzNTM0NH0.HUuOGhSCI0chLRLPgn4QjFtGpNdxQ86FJj_Y1ZQBD2I
+DEBUG:logger:Token válido para user=admin1
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:49:26] "[35m[1mPOST /dbproj/promotions HTTP/1.1[0m" 500 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQzNTM0NH0.HUuOGhSCI0chLRLPgn4QjFtGpNdxQ86FJj_Y1ZQBD2I
+DEBUG:logger:Token válido para user=admin1
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:49:33] "[35m[1mPOST /dbproj/promotions HTTP/1.1[0m" 500 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:59:09] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQzNTk0OX0.oFr5WcyBb7Okpa8hKjRyRHD5HhIBl88WBcfBSPxENfE
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/promotions
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 16:59:22] "[35m[1mPOST /dbproj/promotions HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:werkzeug: * Detected change in '/Users/akcelgraca/Main/School/FCTUC/2º ano/2º Semestre/BD/projeto/Databases_Metro/Data-Bases---Metro-Mondego-System/data-api.py', reloading
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with watchdog (fsevents)
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 270-478-283
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 17:17:28] "PUT /dbproj/user HTTP/1.1" 200 -
+DEBUG:logger:Authorization header recebido: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6ImFkbWluMSIsImlzX2FkbWluIjp0cnVlLCJpc19zdXBlciI6ZmFsc2UsImV4cCI6MTc3ODQzNzA0OH0.mOSsWERY3Mir5JmlI0djjOrJ99900_HkeftekshtBes
+DEBUG:logger:Token válido para user=admin1
+INFO:logger:POST /dbproj/promotions
+DEBUG:logger:Promoção 3 ("School Holidays") criada com sucesso.
+INFO:werkzeug:127.0.0.1 - - [10/May/2026 17:17:46] "POST /dbproj/promotions HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080

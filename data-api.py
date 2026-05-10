@@ -607,7 +607,7 @@ def broadcast_notice(current_user):
             INSERT INTO aviso (id, titulo, mensagem, data_emissao, administrador_pessoa_id)
             VALUES (%s, %s, %s, CURRENT_DATE, %s)
         """
-        curr.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
+        cur.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
 
         # Broadcast para todos os clientes inserindo em aviso_cliente
         insert_aviso_cliente_query = """
@@ -656,7 +656,7 @@ def broadcast_notice(current_user):
 @app.route('/dbproj/promotions', methods=['POST'])
 @token_required
 def create_promotion(current_user):
-    logger.infoq('POST /dbproj/promotions')
+    logger.info('POST /dbproj/promotions')
 
     # Verificar permissão - apenas administradores podem criar promoções
     if not current_user.get('is_admin'):
@@ -694,9 +694,9 @@ def create_promotion(current_user):
         # Obter o ID do tipo_bilhete a partir da string enviada no payload
         cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE nome = %s", (product_type,))
         tipo_bilhete = cur.fetchone()
-        if not tipo_bilhete_row:
+        if not tipo_bilhete:
             return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não encontrado'}), 400
-        tipo_bilhete_id = tipo_bilhete_row[0]
+        tipo_bilhete_id = tipo_bilhete[0]
 
         # Verificar se a linha existe
         cur.execute("SELECT id FROM linha WHERE id = %s", (line_id,))
@@ -713,16 +713,16 @@ def create_promotion(current_user):
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
 
-        cur.execute(insert_query, (new_promocao_id, name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
+        cur.execute(insert_query, (new_promotion_id, name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
 
         # Efetuar o commit da transação
         conn.commit()
-        logger.debug(f'Promoção {new_promocao_id} ("{name}") criada com sucesso.')
+        logger.debug(f'Promoção {new_promotion_id} ("{name}") criada com sucesso.')
 
         response = {
             'status': StatusCodes['success'],
             'errors': None,
-            'results': {'promotion_id': new_promocao_id}
+            'results': {'promotion_id': new_promotion_id}
         }
 
     except psycopg2.Error as error:
