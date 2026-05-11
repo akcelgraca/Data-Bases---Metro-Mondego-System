@@ -736,6 +736,187 @@ def create_promotion(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 8 — Listar linhas e próximas partidas (Clientes / qualquer autenticado)
+##
+## Devolve, para cada linha e direção (ida/volta), a próxima viagem com
+## capacidade disponível, atraso estimado e os terminais de origem e destino.
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/lines_next
+## Resposta: {"status": 200, "results": [ { ... } ]}
+##
+
+@app.route('/dbproj/lines_next', methods=['GET'])
+@token_required
+def lines_next(current_user):
+    logger.info('GET /dbproj/lines_next')
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Obtemos o timestamp atual para passar como parâmetro,
+        now_ts = datetime.datetime.now()
+
+        query = """
+            SELECT l.id AS line_id,
+                   l.nome AS line_name,
+                   -- origem = paragem com sequência 1 no sentido certo
+                   (SELECT pr.nome FROM paragem pr
+                    JOIN trajeto t ON t.paragem_id = pr.id
+                    WHERE t.linha_id = l.id
+                      AND t.plataforma_sentido = CASE v.direcao
+                                                    WHEN 'ida' THEN 'A'
+                                                    WHEN 'volta' THEN 'B'
+                                                  END
+                      AND t.sequencia = 1) AS origin_terminal,
+                   -- destino = paragem com a sequência máxima no sentido
+                   (SELECT pr.nome FROM paragem pr
+                    JOIN trajeto t ON t.paragem_id = pr.id
+                    WHERE t.linha_id = l.id
+                      AND t.plataforma_sentido = CASE v.direcao
+                                                    WHEN 'ida' THEN 'A'
+                                                    WHEN 'volta' THEN 'B'
+                                                  END
+                      AND t.sequencia = (SELECT MAX(t2.sequencia)
+                                         FROM trajeto t2
+                                         WHERE t2.linha_id = l.id
+                                           AND t2.plataforma_sentido =
+                                               CASE v.direcao
+                                                   WHEN 'ida' THEN 'A'
+                                                   WHEN 'volta' THEN 'B'
+                                               END)
+                   ) AS destination_terminal,
+                   v.data_hora_partida AS departure_time,
+                   v.atraso_estimado AS estimated_delay_min,
+                   v.capacidade_disponivel AS available_capacity
+            FROM viagem v
+            JOIN linha l ON l.id = v.linha_id
+            WHERE v.data_hora_partida >= %s
+              AND v.data_hora_partida = (
+                  SELECT MIN(v2.data_hora_partida)
+                  FROM viagem v2
+                  WHERE v2.linha_id = l.id
+                    AND v2.direcao = v.direcao
+                    AND v2.data_hora_partida >= %s
+              )
+            ORDER BY l.id, v.direcao;
+        """
+
+        cur.execute(query, (now_ts, now_ts))
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'line_name': row[1],
+                'origin_terminal': row[2],
+                'destination_terminal': row[3],
+                'departure_time': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else None,
+                'estimated_delay_min': int(row[5]) if row[5] is not None else 0,
+                'available_capacity': int(row[6]) if row[6] is not None else 0
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/lines_next - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 9 — Adicionar fundos à carteira (Cliente autenticado)
+##
+## Permite que um cliente adicione saldo à sua própria carteira.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/wallet/topup
+## Body: {"amount": 20.00, "payment_method": "card"}
+## Resposta: {"status": 200, "results": {"new_balance": 70.00}}
+##
+
+@app.route('/dbproj/wallet/topup', methods=['POST'])
+@token_required
+def wallet_topup(current_user):
+    logger.info('POST /dbproj/wallet/topup')
+
+    # Apenas clientes podem carregar a carteira
+    if current_user.get('is_admin'):
+        logger.warning(f'Administrador {current_user["username"]} tentou carregar carteira.')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas clientes podem carregar a carteira'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    amount = payload.get('amount')
+    payment_method = payload.get('payment_method')
+
+    if not amount or not payment_method:
+        return flask.jsonify({'status': 400, 'errors': 'Campos amount e payment_method são obrigatórios'}), 400
+
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'amount deve ser um número positivo'}), 400
+
+    user_id = current_user['user_id']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar que o utilizador é realmente um cliente
+        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s", (user_id,))
+        cliente_row = cur.fetchone()
+        if not cliente_row:
+            return flask.jsonify({'status': 400, 'errors': 'O utilizador autenticado não é um cliente'}), 400
+
+        current_wallet = cliente_row[1]
+
+        # Gerar novo ID para o carregamento
+        cur.execute("SELECT COALESCE(MAX(id_carregamento), 0) + 1 FROM carregamento")
+        new_carregamento_id = cur.fetchone()[0]
+
+        # Inserir registo de carregamento
+        cur.execute(
+            "INSERT INTO carregamento (id_carregamento, valor, metodo_pagamento, data_hora, cliente_pessoa_id) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (new_carregamento_id, amount, payment_method, datetime.datetime.now(), user_id)
+        )
+
+        # Atualizar o saldo da carteira
+        new_balance = current_wallet + amount
+        cur.execute("UPDATE cliente SET wallet = %s WHERE pessoa_id = %s", (new_balance, user_id))
+
+        conn.commit()
+        logger.debug(f'Cliente {user_id} carregou {amount:.2f}€. Saldo: {new_balance:.2f}€')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'new_balance': new_balance}
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/wallet/topup - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
 
 
 @app.route('/')
