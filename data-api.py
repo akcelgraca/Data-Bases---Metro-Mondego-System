@@ -1075,6 +1075,150 @@ def purchase_ticket(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 11 — Validar/Usar bilhete (Clientes)
+##
+## Regista uma validação de bilhete (viagem única, diária, mensal, etc.)
+## Verifica se o bilhete está ativo, dentro da validade e válido para a linha.
+## Se bilhete single_trip já tiver sido usado, rejeita.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/ticket/use/<int:ticket_id>
+## Body: {"used_at": "2025-04-12 08:20:00", "station_id": 7}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/ticket/use/<int:ticket_id>', methods=['POST'])
+@token_required
+def validate_ticket(current_user, ticket_id):
+    logger.info('POST /dbproj/ticket/use/%s', ticket_id)
+
+    # 1. Apenas clientes podem validar bilhetes
+    if current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas clientes podem validar bilhetes'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload inválido ou em falta'}), 400
+
+    used_at = payload.get('used_at')
+    station_id = payload.get('station_id')
+
+    if not used_at or not station_id:
+        return flask.jsonify({'status': 400, 'errors': 'Campos used_at e station_id são obrigatórios'}), 400
+
+    user_id = current_user['user_id']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # 2. Verificar se o bilhete pertence ao cliente
+        cur.execute("""
+            SELECT id, estado, data_inicio_validade, data_fim_validade,
+                   data_viagem, data_expiracao, tipo_bilhete_id_tipo, linha_id
+            FROM bilhete
+            WHERE id = %s AND cliente_pessoa_id = %s
+        """, (ticket_id, user_id))
+        bilhete = cur.fetchone()
+        if not bilhete:
+            return flask.jsonify({'status': 400, 'errors': 'Bilhete não encontrado ou não lhe pertence'}), 400
+
+        estado = bilhete[1]
+        inicio_validade = bilhete[2]
+        fim_validade = bilhete[3]
+        data_viagem = bilhete[4]
+        data_expiracao = bilhete[5]
+        tipo_bilhete_id = bilhete[6]
+        bilhete_linha_id = bilhete[7]
+
+        # 3. Verificar se o bilhete está ativo
+        if estado != 'ativo':
+            return flask.jsonify({'status': 400, 'errors': f'Bilhete com estado "{estado}" não pode ser usado'}), 400
+
+        # 4. Validar a data/hora da validação em relação à validade do bilhete
+        used_dt = datetime.datetime.strptime(used_at, '%Y-%m-%d %H:%M:%S')
+
+        # Bilhete single_trip: deve ser usado na data_viagem exata
+        if data_viagem is not None:
+            if used_dt.date() != data_viagem:
+                return flask.jsonify({'status': 400, 'errors': 'Bilhete single trip fora da data de viagem'}), 400
+
+        # Bilhetes com intervalo de datas (daily, monthly)
+        if inicio_validade and fim_validade:
+            if used_dt.date() < inicio_validade or used_dt.date() > fim_validade:
+                return flask.jsonify({'status': 400, 'errors': 'Bilhete fora do período de validade'}), 400
+
+        # Se houver data_expiracao (campo genérico) – usado em passes?
+        if data_expiracao and used_dt.date() > data_expiracao:
+            return flask.jsonify({'status': 400, 'errors': 'Bilhete expirado'}), 400
+
+        # 5. Para bilhetes single_trip, verificar se já foi usado
+        if data_viagem is not None:
+            cur.execute("SELECT COUNT(*) FROM validacao WHERE bilhete_id = %s", (ticket_id,))
+            if cur.fetchone()[0] > 0:
+                return flask.jsonify({'status': 400, 'errors': 'Bilhete single trip já foi usado'}), 400
+
+        # 6. Verificar se o bilhete é válido para a linha da validação?
+        #    A linha pode ser inferida a partir da paragem? Não directamente.
+        #    Mas podemos obter a linha associada ao bilhete (se existir) e verificar se a paragem
+        #    pertence a essa linha. Se bilhete_linha_id for NULL, é válido em qualquer linha.
+        if bilhete_linha_id is not None:
+            cur.execute("""
+                SELECT 1 FROM trajeto
+                WHERE linha_id = %s AND paragem_id = %s
+                LIMIT 1
+            """, (bilhete_linha_id, station_id))
+            if not cur.fetchone():
+                return flask.jsonify({'status': 400, 'errors': 'Esta paragem não pertence à linha do bilhete'}), 400
+
+        # 7. Tentar encontrar uma viagem que corresponda à validação
+        #    (opcional – se não encontrarmos, viagem_id fica NULL)
+        viagem_id = None
+        try:
+            cur.execute("""
+                SELECT v.id
+                FROM viagem v
+                JOIN trajeto t ON t.linha_id = v.linha_id
+                WHERE t.paragem_id = %s
+                  AND v.data_hora_partida <= %s
+                  AND (v.data_hora_partida + (t.tempo_previsto_desde_origem || ' minutes')::INTERVAL) >= %s
+                ORDER BY v.data_hora_partida DESC
+                LIMIT 1
+            """, (station_id, used_at, used_at))
+            row = cur.fetchone()
+            if row:
+                viagem_id = row[0]
+        except Exception:
+            # Em caso de erro na inferência, mantemos NULL
+            pass
+
+        # 8. Inserir a validação
+        cur.execute("""
+            INSERT INTO validacao (data_hora, bilhete_id, viagem_id, paragem_id)
+            VALUES (%s, %s, %s, %s)
+        """, (used_at, ticket_id, viagem_id, station_id))
+
+        # 9. Se for single_trip, marcar bilhete como 'usado'
+        if data_viagem is not None:
+            cur.execute("UPDATE bilhete SET estado = 'usado' WHERE id = %s", (ticket_id,))
+
+        conn.commit()
+        logger.debug(f'Bilhete {ticket_id} validado na paragem {station_id} às {used_at}')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/ticket/use/{ticket_id} - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 
 @app.route('/')
 def landing_page():
