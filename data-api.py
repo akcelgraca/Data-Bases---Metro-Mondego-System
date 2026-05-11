@@ -1219,6 +1219,103 @@ def validate_ticket(current_user, ticket_id):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 12 — Períodos de procura máxima e mínima (Admin only)
+##
+## Para cada linha, devolve a faixa horária com maior e a com menor
+## número de validações (peak e low demand).
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/report/demand
+## Resposta: {"status": 200, "results": [ {"line_id": 1, "time_slot": "08:00-08:59", "validations": 1430}, ... ]}
+##
+
+@app.route('/dbproj/report/demand', methods=['GET'])
+@token_required
+def report_demand(current_user):
+    logger.info('GET /dbproj/report/demand')
+
+    # Apenas administradores podem aceder a relatórios
+    if not current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem aceder a relatórios'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        query = """
+            SELECT linha_id, time_slot, validations
+            FROM (
+                -- Subconsulta que agrupa as validações por linha e hora
+                SELECT v.linha_id AS linha_id,
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':00-' ||
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':59' AS time_slot,
+                       COUNT(*)::int AS validations
+                FROM validacao va
+                JOIN viagem v ON va.viagem_id = v.id
+                GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+            ) sub
+            WHERE (linha_id, validations) IN (
+                -- Pico: maior número de validações por linha
+                SELECT linha_id, MAX(validations)
+                FROM (
+                    SELECT v.linha_id,
+                           COUNT(*)::int AS validations
+                    FROM validacao va
+                    JOIN viagem v ON va.viagem_id = v.id
+                    GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+                ) peak_sub
+                GROUP BY linha_id
+            )
+            UNION ALL
+            SELECT linha_id, time_slot, validations
+            FROM (
+                SELECT v.linha_id AS linha_id,
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':00-' ||
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':59' AS time_slot,
+                       COUNT(*)::int AS validations
+                FROM validacao va
+                JOIN viagem v ON va.viagem_id = v.id
+                GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+            ) sub
+            WHERE (linha_id, validations) IN (
+                -- Baixa: menor número de validações por linha
+                SELECT linha_id, MIN(validations)
+                FROM (
+                    SELECT v.linha_id,
+                           COUNT(*)::int AS validations
+                    FROM validacao va
+                    JOIN viagem v ON va.viagem_id = v.id
+                    GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+                ) low_sub
+                GROUP BY linha_id
+            )
+            ORDER BY linha_id, validations DESC;
+        """
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'time_slot': row[1],
+                'validations': int(row[2])
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/report/demand - error: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 
 @app.route('/')
 def landing_page():
