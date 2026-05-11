@@ -1387,6 +1387,73 @@ def report_top_spenders(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 14 — Relatório mensal (Admin only)
+##
+## Para cada linha e mês, apresenta o número de clientes que usaram
+## o serviço pelo menos uma vez e quantos foram clientes repetidos (≥2 validações).
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/report/monthly
+## Resposta: {"status": 200, "results": [ {"line_id": 2, "month": 1, "active_customers": 1840, "repeat_customers": 620}, ... ]}
+##
+
+@app.route('/dbproj/report/monthly', methods=['GET'])
+@token_required
+def report_monthly(current_user):
+    logger.info('GET /dbproj/report/monthly')
+
+    if not current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem aceder a relatórios'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        query = """
+            SELECT linha_id,
+                   month,
+                   COUNT(DISTINCT cliente_id) AS active_customers,
+                   SUM(CASE WHEN validations >= 2 THEN 1 ELSE 0 END) AS repeat_customers
+            FROM (
+                -- Número de validações de cada cliente em cada linha/mês
+                SELECT v.linha_id,
+                       EXTRACT(MONTH FROM va.data_hora)::int AS month,
+                       b.cliente_pessoa_id AS cliente_id,
+                       COUNT(*)::int AS validations
+                FROM validacao va
+                JOIN viagem v ON va.viagem_id = v.id
+                JOIN bilhete b ON va.bilhete_id = b.id
+                GROUP BY v.linha_id, EXTRACT(MONTH FROM va.data_hora), b.cliente_pessoa_id
+            ) sub
+            GROUP BY linha_id, month
+            ORDER BY linha_id, month;
+        """
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'month': int(row[1]),
+                'active_customers': int(row[2]),
+                'repeat_customers': int(row[3])
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/report/monthly - error: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 
 @app.route('/')
 def landing_page():
