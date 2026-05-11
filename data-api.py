@@ -918,6 +918,163 @@ def wallet_topup(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 10 — Comprar bilhete/passe (Clientes)
+##
+## Cria um bilhete (single trip, daily, monthly pass, etc.) e deduz o saldo da carteira.
+## Um trigger na BD (trigger_deduct_wallet) trata da dedução.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/purchase
+## Body: {"line_id": 2, "product_type": "single_trip", "travel_date": "2025-04-12"}
+## Resposta: {"status": 200, "results": {"purchase_id": id, "final_price": 1.50}}
+##
+
+@app.route('/dbproj/purchase', methods=['POST'])
+@token_required
+def purchase_ticket(current_user):
+    logger.info('POST /dbproj/purchase')
+
+    # 1. Apenas clientes (não administradores)
+    if current_user.get('is_admin'):
+        logger.warning(f'Administrador {current_user["username"]} tentou comprar bilhete.')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas clientes podem comprar bilhetes'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    line_id = payload.get('line_id')
+    product_type = payload.get('product_type')
+    travel_date = payload.get('travel_date')
+
+    if not all([line_id, product_type, travel_date]):
+        return flask.jsonify({'status': 400, 'errors': 'Campos line_id, product_type e travel_date são obrigatórios'}), 400
+
+    user_id = current_user['user_id']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # 2. Verificar que o utilizador é mesmo um cliente
+        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s", (user_id,))
+        cliente_row = cur.fetchone()
+        if not cliente_row:
+            return flask.jsonify({'status': 400, 'errors': 'Utilizador não é cliente'}), 400
+
+        # 3. Obter ID do tipo de bilhete a partir do nome
+        cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE nome = %s", (product_type,))
+        tipo_row = cur.fetchone()
+        if not tipo_row:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não encontrado'}), 400
+        tipo_bilhete_id = tipo_row[0]
+
+        # 4. Obter preço actual (última entrada no historico_preco com data <= hoje)
+        cur.execute("""
+            SELECT preco FROM historico_preco
+            WHERE tipo_bilhete_id_tipo = %s AND data_efetiva <= CURRENT_DATE
+            ORDER BY data_efetiva DESC
+            LIMIT 1
+        """, (tipo_bilhete_id,))
+        preco_row = cur.fetchone()
+        if not preco_row:
+            return flask.jsonify({'status': 400, 'errors': 'Não existe preço definido para este tipo de bilhete'}), 400
+        base_price = float(preco_row[0])
+
+        # 5. Verificar se existe promoção activa para esta linha e tipo de bilhete
+        cur.execute("""
+            SELECT desconto FROM promocao
+            WHERE linha_id = %s
+              AND tipo_bilhete_id_tipo = %s
+              AND CURRENT_DATE BETWEEN data_inicio AND data_fim
+            LIMIT 1
+        """, (line_id, tipo_bilhete_id))
+        promo_row = cur.fetchone()
+        discount = promo_row[0] if promo_row else 0
+
+        final_price = base_price * (1 - discount / 100.0)
+        # Arredondar a 2 casas decimais
+        final_price = round(final_price, 2)
+
+        # 6. Definir datas de validade conforme o tipo de bilhete
+        data_viagem = None
+        data_inicio = None
+        data_fim = None
+        data_expiracao = None
+
+        if product_type == 'single_trip':
+            data_viagem = travel_date
+        elif product_type == 'daily':
+            data_inicio = travel_date
+            data_fim = travel_date               # válido apenas no próprio dia
+        elif product_type in ('monthly_pass', 'monthly_student', 'monthly_senior'):
+            data_inicio = travel_date
+            # Adicionamos 30 dias como validade de um mês
+            data_fim = (datetime.datetime.strptime(travel_date, '%Y-%m-%d') + datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+        else:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não suportado'}), 400
+
+        # 7. Gerar novo ID para o bilhete
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM bilhete")
+        new_bilhete_id = cur.fetchone()[0]
+
+        # 8. Inserir o bilhete (o trigger vai deduzir o saldo automaticamente)
+        insert_query = """
+            INSERT INTO bilhete (id, data_compra, preco_compra,
+                                 data_inicio_validade, data_fim_validade,
+                                 data_viagem, data_expiracao, estado,
+                                 metodo_pagamento, desconto_aplicado,
+                                 tipo_bilhete_id_tipo, cliente_pessoa_id)
+            VALUES (%s, CURRENT_DATE, %s,
+                    %s, %s,
+                    %s, %s, 'ativo',
+                    'wallet', %s,
+                    %s, %s)
+        """
+        cur.execute(insert_query, (
+            new_bilhete_id, final_price,
+            data_inicio, data_fim,
+            data_viagem, data_expiracao,
+            discount,                # armazena o desconto aplicado (0 se não houve)
+            tipo_bilhete_id,
+            user_id
+        ))
+
+        # Se o trigger não rejeitar, fazemos commit
+        conn.commit()
+        logger.debug(f'Bilhete {new_bilhete_id} comprado: tipo={product_type}, linha={line_id}, preço={final_price}')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {
+                'purchase_id': new_bilhete_id,
+                'final_price': final_price
+            }
+        }
+
+    except psycopg2.Error as error:
+        conn.rollback()
+        # Capturamos a excepção lançada pelo trigger (saldo insuficiente)
+        if 'Saldo insuficiente' in str(error):
+            logger.warning(f'Saldo insuficiente para cliente {user_id}')
+            response = {'status': StatusCodes['api_error'], 'errors': 'Saldo insuficiente na carteira'}
+        else:
+            logger.error(f'POST /dbproj/purchase - erro: {error}')
+            response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/purchase - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
 
 @app.route('/')
 def landing_page():
