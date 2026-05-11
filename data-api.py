@@ -1039,6 +1039,7 @@ def purchase_ticket(current_user):
             discount,                # armazena o desconto aplicado (0 se não houve)
             tipo_bilhete_id,
             user_id
+            line_id
         ))
 
         # Se o trigger não rejeitar, fazemos commit
@@ -1308,6 +1309,76 @@ def report_demand(current_user):
 
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f'GET /dbproj/report/demand - error: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 13 — Top spenders por linha (Admin only)
+##
+## Para cada linha, devolve o(s) cliente(s) com maior gasto
+## nos últimos 30 dias (soma do preço de compra dos bilhetes).
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/report/top_spenders
+## Resposta: {"status": 200, "results": [ {"line_id": 1, "customer_id": 17, "total_spent": 150.00}, ... ]}
+##
+
+@app.route('/dbproj/report/top_spenders', methods=['GET'])
+@token_required
+def report_top_spenders(current_user):
+    logger.info('GET /dbproj/report/top_spenders')
+
+    if not current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem aceder a relatórios'}), 400
+
+    # Data limite: 30 dias atrás (passada como parâmetro para evitar funções SQL não lecionadas)
+    thirty_days_ago = (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        query = """
+            SELECT b.linha_id AS line_id,
+                   b.cliente_pessoa_id AS customer_id,
+                   SUM(b.preco_compra) AS total_spent
+            FROM bilhete b
+            WHERE b.linha_id IS NOT NULL
+              AND b.data_compra >= %s
+            GROUP BY b.linha_id, b.cliente_pessoa_id
+            HAVING SUM(b.preco_compra) = (
+                SELECT MAX(total)
+                FROM (
+                    SELECT SUM(b2.preco_compra) AS total
+                    FROM bilhete b2
+                    WHERE b2.linha_id = b.linha_id
+                      AND b2.data_compra >= %s
+                    GROUP BY b2.cliente_pessoa_id
+                ) sub
+            )
+            ORDER BY b.linha_id;
+        """
+
+        cur.execute(query, (thirty_days_ago, thirty_days_ago))
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'customer_id': int(row[1]),
+                'total_spent': round(float(row[2]), 2)
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/report/top_spenders - error: {error}')
         response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
 
     finally:
