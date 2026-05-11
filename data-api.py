@@ -1038,7 +1038,7 @@ def purchase_ticket(current_user):
             data_viagem, data_expiracao,
             discount,                # armazena o desconto aplicado (0 se não houve)
             tipo_bilhete_id,
-            user_id
+            user_id,
             line_id
         ))
 
