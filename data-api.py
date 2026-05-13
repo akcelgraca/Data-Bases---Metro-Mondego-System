@@ -607,7 +607,7 @@ def broadcast_notice(current_user):
             INSERT INTO aviso (id, titulo, mensagem, data_emissao, administrador_pessoa_id)
             VALUES (%s, %s, %s, CURRENT_DATE, %s)
         """
-        curr.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
+        cur.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
 
         # Broadcast para todos os clientes inserindo em aviso_cliente
         insert_aviso_cliente_query = """
@@ -656,7 +656,7 @@ def broadcast_notice(current_user):
 @app.route('/dbproj/promotions', methods=['POST'])
 @token_required
 def create_promotion(current_user):
-    logger.infoq('POST /dbproj/promotions')
+    logger.info('POST /dbproj/promotions')
 
     # Verificar permissão - apenas administradores podem criar promoções
     if not current_user.get('is_admin'):
@@ -694,9 +694,9 @@ def create_promotion(current_user):
         # Obter o ID do tipo_bilhete a partir da string enviada no payload
         cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE nome = %s", (product_type,))
         tipo_bilhete = cur.fetchone()
-        if not tipo_bilhete_row:
+        if not tipo_bilhete:
             return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não encontrado'}), 400
-        tipo_bilhete_id = tipo_bilhete_row[0]
+        tipo_bilhete_id = tipo_bilhete[0]
 
         # Verificar se a linha existe
         cur.execute("SELECT id FROM linha WHERE id = %s", (line_id,))
@@ -713,16 +713,16 @@ def create_promotion(current_user):
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
 
-        cur.execute(insert_query, (new_promocao_id, name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
+        cur.execute(insert_query, (new_promotion_id, name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
 
         # Efetuar o commit da transação
         conn.commit()
-        logger.debug(f'Promoção {new_promocao_id} ("{name}") criada com sucesso.')
+        logger.debug(f'Promoção {new_promotion_id} ("{name}") criada com sucesso.')
 
         response = {
             'status': StatusCodes['success'],
             'errors': None,
-            'results': {'promotion_id': new_promocao_id}
+            'results': {'promotion_id': new_promotion_id}
         }
 
     except psycopg2.Error as error:
@@ -736,6 +736,723 @@ def create_promotion(current_user):
 
     return flask.jsonify(response)
 
+##
+## Endpoint 8 — Listar linhas e próximas partidas (Clientes / qualquer autenticado)
+##
+## Devolve, para cada linha e direção (ida/volta), a próxima viagem com
+## capacidade disponível, atraso estimado e os terminais de origem e destino.
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/lines_next
+## Resposta: {"status": 200, "results": [ { ... } ]}
+##
+
+@app.route('/dbproj/lines_next', methods=['GET'])
+@token_required
+def lines_next(current_user):
+    logger.info('GET /dbproj/lines_next')
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Obtemos o timestamp atual para passar como parâmetro,
+        now_ts = datetime.datetime.now()
+
+        query = """
+            SELECT l.id AS line_id,
+                   l.nome AS line_name,
+                   -- origem = paragem com sequência 1 no sentido certo
+                   (SELECT pr.nome FROM paragem pr
+                    JOIN trajeto t ON t.paragem_id = pr.id
+                    WHERE t.linha_id = l.id
+                      AND t.plataforma_sentido = CASE v.direcao
+                                                    WHEN 'ida' THEN 'A'
+                                                    WHEN 'volta' THEN 'B'
+                                                  END
+                      AND t.sequencia = 1) AS origin_terminal,
+                   -- destino = paragem com a sequência máxima no sentido
+                   (SELECT pr.nome FROM paragem pr
+                    JOIN trajeto t ON t.paragem_id = pr.id
+                    WHERE t.linha_id = l.id
+                      AND t.plataforma_sentido = CASE v.direcao
+                                                    WHEN 'ida' THEN 'A'
+                                                    WHEN 'volta' THEN 'B'
+                                                  END
+                      AND t.sequencia = (SELECT MAX(t2.sequencia)
+                                         FROM trajeto t2
+                                         WHERE t2.linha_id = l.id
+                                           AND t2.plataforma_sentido =
+                                               CASE v.direcao
+                                                   WHEN 'ida' THEN 'A'
+                                                   WHEN 'volta' THEN 'B'
+                                               END)
+                   ) AS destination_terminal,
+                   v.data_hora_partida AS departure_time,
+                   v.atraso_estimado AS estimated_delay_min,
+                   v.capacidade_disponivel AS available_capacity
+            FROM viagem v
+            JOIN linha l ON l.id = v.linha_id
+            WHERE v.data_hora_partida >= %s
+              AND v.data_hora_partida = (
+                  SELECT MIN(v2.data_hora_partida)
+                  FROM viagem v2
+                  WHERE v2.linha_id = l.id
+                    AND v2.direcao = v.direcao
+                    AND v2.data_hora_partida >= %s
+              )
+            ORDER BY l.id, v.direcao;
+        """
+
+        cur.execute(query, (now_ts, now_ts))
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'line_name': row[1],
+                'origin_terminal': row[2],
+                'destination_terminal': row[3],
+                'departure_time': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else None,
+                'estimated_delay_min': int(row[5]) if row[5] is not None else 0,
+                'available_capacity': int(row[6]) if row[6] is not None else 0
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/lines_next - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 9 — Adicionar fundos à carteira (Cliente autenticado)
+##
+## Permite que um cliente adicione saldo à sua própria carteira.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/wallet/topup
+## Body: {"amount": 20.00, "payment_method": "card"}
+## Resposta: {"status": 200, "results": {"new_balance": 70.00}}
+##
+
+@app.route('/dbproj/wallet/topup', methods=['POST'])
+@token_required
+def wallet_topup(current_user):
+    logger.info('POST /dbproj/wallet/topup')
+
+    # Apenas clientes podem carregar a carteira
+    if current_user.get('is_admin'):
+        logger.warning(f'Administrador {current_user["username"]} tentou carregar carteira.')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas clientes podem carregar a carteira'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    amount = payload.get('amount')
+    payment_method = payload.get('payment_method')
+
+    if not amount or not payment_method:
+        return flask.jsonify({'status': 400, 'errors': 'Campos amount e payment_method são obrigatórios'}), 400
+
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return flask.jsonify({'status': 400, 'errors': 'amount deve ser um número positivo'}), 400
+
+    user_id = current_user['user_id']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # Verificar que o utilizador é realmente um cliente
+        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s", (user_id,))
+        cliente_row = cur.fetchone()
+        if not cliente_row:
+            return flask.jsonify({'status': 400, 'errors': 'O utilizador autenticado não é um cliente'}), 400
+
+        current_wallet = cliente_row[1]
+
+        # Gerar novo ID para o carregamento
+        cur.execute("SELECT COALESCE(MAX(id_carregamento), 0) + 1 FROM carregamento")
+        new_carregamento_id = cur.fetchone()[0]
+
+        # Inserir registo de carregamento
+        cur.execute(
+            "INSERT INTO carregamento (id_carregamento, valor, metodo_pagamento, data_hora, cliente_pessoa_id) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (new_carregamento_id, amount, payment_method, datetime.datetime.now(), user_id)
+        )
+
+        # Atualizar o saldo da carteira
+        new_balance = current_wallet + amount
+        cur.execute("UPDATE cliente SET wallet = %s WHERE pessoa_id = %s", (new_balance, user_id))
+
+        conn.commit()
+        logger.debug(f'Cliente {user_id} carregou {amount:.2f}€. Saldo: {new_balance:.2f}€')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {'new_balance': new_balance}
+        }
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/wallet/topup - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 10 — Comprar bilhete/passe (Clientes)
+##
+## Cria um bilhete (single trip, daily, monthly pass, etc.) e deduz o saldo da carteira.
+## Um trigger na BD (trigger_deduct_wallet) trata da dedução.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/purchase
+## Body: {"line_id": 2, "product_type": "single_trip", "travel_date": "2025-04-12"}
+## Resposta: {"status": 200, "results": {"purchase_id": id, "final_price": 1.50}}
+##
+
+@app.route('/dbproj/purchase', methods=['POST'])
+@token_required
+def purchase_ticket(current_user):
+    logger.info('POST /dbproj/purchase')
+
+    # 1. Apenas clientes (não administradores)
+    if current_user.get('is_admin'):
+        logger.warning(f'Administrador {current_user["username"]} tentou comprar bilhete.')
+        return flask.jsonify({'status': 400, 'errors': 'Apenas clientes podem comprar bilhetes'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload em falta ou JSON inválido'}), 400
+
+    line_id = payload.get('line_id')
+    product_type = payload.get('product_type')
+    travel_date = payload.get('travel_date')
+
+    if not all([line_id, product_type, travel_date]):
+        return flask.jsonify({'status': 400, 'errors': 'Campos line_id, product_type e travel_date são obrigatórios'}), 400
+
+    user_id = current_user['user_id']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # 2. Verificar que o utilizador é mesmo um cliente
+        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s", (user_id,))
+        cliente_row = cur.fetchone()
+        if not cliente_row:
+            return flask.jsonify({'status': 400, 'errors': 'Utilizador não é cliente'}), 400
+
+        # 3. Obter ID do tipo de bilhete a partir do nome
+        cur.execute("SELECT id_tipo FROM tipo_bilhete WHERE nome = %s", (product_type,))
+        tipo_row = cur.fetchone()
+        if not tipo_row:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não encontrado'}), 400
+        tipo_bilhete_id = tipo_row[0]
+
+        # 4. Obter preço actual (última entrada no historico_preco com data <= hoje)
+        cur.execute("""
+            SELECT preco FROM historico_preco
+            WHERE tipo_bilhete_id_tipo = %s AND data_efetiva <= CURRENT_DATE
+            ORDER BY data_efetiva DESC
+            LIMIT 1
+        """, (tipo_bilhete_id,))
+        preco_row = cur.fetchone()
+        if not preco_row:
+            return flask.jsonify({'status': 400, 'errors': 'Não existe preço definido para este tipo de bilhete'}), 400
+        base_price = float(preco_row[0])
+
+        # 5. Verificar se existe promoção activa para esta linha e tipo de bilhete
+        cur.execute("""
+            SELECT desconto FROM promocao
+            WHERE linha_id = %s
+              AND tipo_bilhete_id_tipo = %s
+              AND CURRENT_DATE BETWEEN data_inicio AND data_fim
+            LIMIT 1
+        """, (line_id, tipo_bilhete_id))
+        promo_row = cur.fetchone()
+        discount = promo_row[0] if promo_row else 0
+
+        final_price = base_price * (1 - discount / 100.0)
+        # Arredondar a 2 casas decimais
+        final_price = round(final_price, 2)
+
+        # 6. Definir datas de validade conforme o tipo de bilhete
+        data_viagem = None
+        data_inicio = None
+        data_fim = None
+        data_expiracao = None
+
+        if product_type == 'single_trip':
+            data_viagem = travel_date
+        elif product_type == 'daily':
+            data_inicio = travel_date
+            data_fim = travel_date               # válido apenas no próprio dia
+        elif product_type in ('monthly_pass', 'monthly_student', 'monthly_senior'):
+            data_inicio = travel_date
+            # Adicionamos 30 dias como validade de um mês
+            data_fim = (datetime.datetime.strptime(travel_date, '%Y-%m-%d') + datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+        else:
+            return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não suportado'}), 400
+
+        # 7. Gerar novo ID para o bilhete
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM bilhete")
+        new_bilhete_id = cur.fetchone()[0]
+
+        # 8. Inserir o bilhete (o trigger vai deduzir o saldo automaticamente)
+        insert_query = """
+            INSERT INTO bilhete (id, data_compra, preco_compra,
+                                 data_inicio_validade, data_fim_validade,
+                                 data_viagem, data_expiracao, estado,
+                                 metodo_pagamento, desconto_aplicado,
+                                 tipo_bilhete_id_tipo, cliente_pessoa_id)
+            VALUES (%s, CURRENT_DATE, %s,
+                    %s, %s,
+                    %s, %s, 'ativo',
+                    'wallet', %s,
+                    %s, %s)
+        """
+        cur.execute(insert_query, (
+            new_bilhete_id, final_price,
+            data_inicio, data_fim,
+            data_viagem, data_expiracao,
+            discount,                # armazena o desconto aplicado (0 se não houve)
+            tipo_bilhete_id,
+            user_id,
+            line_id # correção/adição
+        ))
+
+        # Se o trigger não rejeitar, fazemos commit
+        conn.commit()
+        logger.debug(f'Bilhete {new_bilhete_id} comprado: tipo={product_type}, linha={line_id}, preço={final_price}')
+
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': {
+                'purchase_id': new_bilhete_id,
+                'final_price': final_price
+            }
+        }
+
+    except psycopg2.Error as error:
+        conn.rollback()
+        # Capturamos a excepção lançada pelo trigger (saldo insuficiente)
+        if 'Saldo insuficiente' in str(error):
+            logger.warning(f'Saldo insuficiente para cliente {user_id}')
+            response = {'status': StatusCodes['api_error'], 'errors': 'Saldo insuficiente na carteira'}
+        else:
+            logger.error(f'POST /dbproj/purchase - erro: {error}')
+            response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/purchase - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 11 — Validar/Usar bilhete (Clientes)
+##
+## Regista uma validação de bilhete (viagem única, diária, mensal, etc.)
+## Verifica se o bilhete está ativo, dentro da validade e válido para a linha.
+## Se bilhete single_trip já tiver sido usado, rejeita.
+##
+## Método: POST
+## URL: http://localhost:8080/dbproj/ticket/use/<int:ticket_id>
+## Body: {"used_at": "2025-04-12 08:20:00", "station_id": 7}
+## Resposta: {"status": 200, "errors": null} ou {"status": 400, "errors": "mensagem"}
+##
+
+@app.route('/dbproj/ticket/use/<int:ticket_id>', methods=['POST'])
+@token_required
+def validate_ticket(current_user, ticket_id):
+    logger.info('POST /dbproj/ticket/use/%s', ticket_id)
+
+    # 1. Apenas clientes podem validar bilhetes
+    if current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas clientes podem validar bilhetes'}), 400
+
+    payload = flask.request.get_json(silent=True)
+    if not payload:
+        return flask.jsonify({'status': 400, 'errors': 'Payload inválido ou em falta'}), 400
+
+    used_at = payload.get('used_at')
+    station_id = payload.get('station_id')
+
+    if not used_at or not station_id:
+        return flask.jsonify({'status': 400, 'errors': 'Campos used_at e station_id são obrigatórios'}), 400
+
+    user_id = current_user['user_id']
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        # 2. Verificar se o bilhete pertence ao cliente
+        cur.execute("""
+            SELECT id, estado, data_inicio_validade, data_fim_validade,
+                   data_viagem, data_expiracao, tipo_bilhete_id_tipo, linha_id
+            FROM bilhete
+            WHERE id = %s AND cliente_pessoa_id = %s
+        """, (ticket_id, user_id))
+        bilhete = cur.fetchone()
+        if not bilhete:
+            return flask.jsonify({'status': 400, 'errors': 'Bilhete não encontrado ou não lhe pertence'}), 400
+
+        estado = bilhete[1]
+        inicio_validade = bilhete[2]
+        fim_validade = bilhete[3]
+        data_viagem = bilhete[4]
+        data_expiracao = bilhete[5]
+        tipo_bilhete_id = bilhete[6]
+        bilhete_linha_id = bilhete[7]
+
+        # 3. Verificar se o bilhete está ativo
+        if estado != 'ativo':
+            return flask.jsonify({'status': 400, 'errors': f'Bilhete com estado "{estado}" não pode ser usado'}), 400
+
+        # 4. Validar a data/hora da validação em relação à validade do bilhete
+        used_dt = datetime.datetime.strptime(used_at, '%Y-%m-%d %H:%M:%S')
+
+        # Bilhete single_trip: deve ser usado na data_viagem exata
+        if data_viagem is not None:
+            if used_dt.date() != data_viagem:
+                return flask.jsonify({'status': 400, 'errors': 'Bilhete single trip fora da data de viagem'}), 400
+
+        # Bilhetes com intervalo de datas (daily, monthly)
+        if inicio_validade and fim_validade:
+            if used_dt.date() < inicio_validade or used_dt.date() > fim_validade:
+                return flask.jsonify({'status': 400, 'errors': 'Bilhete fora do período de validade'}), 400
+
+        # Se houver data_expiracao (campo genérico) – usado em passes?
+        if data_expiracao and used_dt.date() > data_expiracao:
+            return flask.jsonify({'status': 400, 'errors': 'Bilhete expirado'}), 400
+
+        # 5. Para bilhetes single_trip, verificar se já foi usado
+        if data_viagem is not None:
+            cur.execute("SELECT COUNT(*) FROM validacao WHERE bilhete_id = %s", (ticket_id,))
+            if cur.fetchone()[0] > 0:
+                return flask.jsonify({'status': 400, 'errors': 'Bilhete single trip já foi usado'}), 400
+
+        # 6. Verificar se o bilhete é válido para a linha da validação?
+        #    A linha pode ser inferida a partir da paragem? Não directamente.
+        #    Mas podemos obter a linha associada ao bilhete (se existir) e verificar se a paragem
+        #    pertence a essa linha. Se bilhete_linha_id for NULL, é válido em qualquer linha.
+        if bilhete_linha_id is not None:
+            cur.execute("""
+                SELECT 1 FROM trajeto
+                WHERE linha_id = %s AND paragem_id = %s
+                LIMIT 1
+            """, (bilhete_linha_id, station_id))
+            if not cur.fetchone():
+                return flask.jsonify({'status': 400, 'errors': 'Esta paragem não pertence à linha do bilhete'}), 400
+
+        # 7. Tentar encontrar uma viagem que corresponda à validação
+        #    (opcional – se não encontrarmos, viagem_id fica NULL)
+        viagem_id = None
+        try:
+            cur.execute("""
+                SELECT v.id
+                FROM viagem v
+                JOIN trajeto t ON t.linha_id = v.linha_id
+                WHERE t.paragem_id = %s
+                  AND v.data_hora_partida <= %s
+                  AND (v.data_hora_partida + (t.tempo_previsto_desde_origem || ' minutes')::INTERVAL) >= %s
+                ORDER BY v.data_hora_partida DESC
+                LIMIT 1
+            """, (station_id, used_at, used_at))
+            row = cur.fetchone()
+            if row:
+                viagem_id = row[0]
+        except Exception:
+            # Em caso de erro na inferência, mantemos NULL
+            pass
+
+        # 8. Inserir a validação
+        cur.execute("""
+            INSERT INTO validacao (data_hora, bilhete_id, viagem_id, paragem_id)
+            VALUES (%s, %s, %s, %s)
+        """, (used_at, ticket_id, viagem_id, station_id))
+
+        # 9. Se for single_trip, marcar bilhete como 'usado'
+        if data_viagem is not None:
+            cur.execute("UPDATE bilhete SET estado = 'usado' WHERE id = %s", (ticket_id,))
+
+        conn.commit()
+        logger.debug(f'Bilhete {ticket_id} validado na paragem {station_id} às {used_at}')
+
+        response = {'status': StatusCodes['success'], 'errors': None}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        logger.error(f'POST /dbproj/ticket/use/{ticket_id} - erro: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 12 — Períodos de procura máxima e mínima (Admin only)
+##
+## Para cada linha, devolve a faixa horária com maior e a com menor
+## número de validações (peak e low demand).
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/report/demand
+## Resposta: {"status": 200, "results": [ {"line_id": 1, "time_slot": "08:00-08:59", "validations": 1430}, ... ]}
+##
+
+@app.route('/dbproj/report/demand', methods=['GET'])
+@token_required
+def report_demand(current_user):
+    logger.info('GET /dbproj/report/demand')
+
+    # Apenas administradores podem aceder a relatórios
+    if not current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem aceder a relatórios'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        query = """
+            SELECT linha_id, time_slot, validations
+            FROM (
+                -- Subconsulta que agrupa as validações por linha e hora
+                SELECT v.linha_id AS linha_id,
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':00-' ||
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':59' AS time_slot,
+                       COUNT(*)::int AS validations
+                FROM validacao va
+                JOIN viagem v ON va.viagem_id = v.id
+                GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+            ) sub
+            WHERE (linha_id, validations) IN (
+                -- Pico: maior número de validações por linha
+                SELECT linha_id, MAX(validations)
+                FROM (
+                    SELECT v.linha_id,
+                           COUNT(*)::int AS validations
+                    FROM validacao va
+                    JOIN viagem v ON va.viagem_id = v.id
+                    GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+                ) peak_sub
+                GROUP BY linha_id
+            )
+            UNION ALL
+            SELECT linha_id, time_slot, validations
+            FROM (
+                SELECT v.linha_id AS linha_id,
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':00-' ||
+                       LPAD(EXTRACT(HOUR FROM va.data_hora)::text, 2, '0') || ':59' AS time_slot,
+                       COUNT(*)::int AS validations
+                FROM validacao va
+                JOIN viagem v ON va.viagem_id = v.id
+                GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+            ) sub
+            WHERE (linha_id, validations) IN (
+                -- Baixa: menor número de validações por linha
+                SELECT linha_id, MIN(validations)
+                FROM (
+                    SELECT v.linha_id,
+                           COUNT(*)::int AS validations
+                    FROM validacao va
+                    JOIN viagem v ON va.viagem_id = v.id
+                    GROUP BY v.linha_id, EXTRACT(HOUR FROM va.data_hora)
+                ) low_sub
+                GROUP BY linha_id
+            )
+            ORDER BY linha_id, validations DESC;
+        """
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'time_slot': row[1],
+                'validations': int(row[2])
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/report/demand - error: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 13 — Top spenders por linha (Admin only)
+##
+## Para cada linha, devolve o(s) cliente(s) com maior gasto
+## nos últimos 30 dias (soma do preço de compra dos bilhetes).
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/report/top_spenders
+## Resposta: {"status": 200, "results": [ {"line_id": 1, "customer_id": 17, "total_spent": 150.00}, ... ]}
+##
+
+@app.route('/dbproj/report/top_spenders', methods=['GET'])
+@token_required
+def report_top_spenders(current_user):
+    logger.info('GET /dbproj/report/top_spenders')
+
+    if not current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem aceder a relatórios'}), 400
+
+    # Data limite: 30 dias atrás (passada como parâmetro para evitar funções SQL não lecionadas)
+    thirty_days_ago = (datetime.datetime.now() - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        query = """
+            SELECT b.linha_id AS line_id,
+                   b.cliente_pessoa_id AS customer_id,
+                   SUM(b.preco_compra) AS total_spent
+            FROM bilhete b
+            WHERE b.linha_id IS NOT NULL
+              AND b.data_compra >= %s
+            GROUP BY b.linha_id, b.cliente_pessoa_id
+            HAVING SUM(b.preco_compra) = (
+                SELECT MAX(total)
+                FROM (
+                    SELECT SUM(b2.preco_compra) AS total
+                    FROM bilhete b2
+                    WHERE b2.linha_id = b.linha_id
+                      AND b2.data_compra >= %s
+                    GROUP BY b2.cliente_pessoa_id
+                ) sub
+            )
+            ORDER BY b.linha_id;
+        """
+
+        cur.execute(query, (thirty_days_ago, thirty_days_ago))
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'customer_id': int(row[1]),
+                'total_spent': round(float(row[2]), 2)
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/report/top_spenders - error: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
+
+##
+## Endpoint 14 — Relatório mensal (Admin only)
+##
+## Para cada linha e mês, apresenta o número de clientes que usaram
+## o serviço pelo menos uma vez e quantos foram clientes repetidos (≥2 validações).
+##
+## Método: GET
+## URL: http://localhost:8080/dbproj/report/monthly
+## Resposta: {"status": 200, "results": [ {"line_id": 2, "month": 1, "active_customers": 1840, "repeat_customers": 620}, ... ]}
+##
+
+@app.route('/dbproj/report/monthly', methods=['GET'])
+@token_required
+def report_monthly(current_user):
+    logger.info('GET /dbproj/report/monthly')
+
+    if not current_user.get('is_admin'):
+        return flask.jsonify({'status': 400, 'errors': 'Apenas administradores podem aceder a relatórios'}), 400
+
+    conn = db_connection()
+    cur = conn.cursor()
+
+    try:
+        query = """
+            SELECT linha_id,
+                   month,
+                   COUNT(DISTINCT cliente_id) AS active_customers,
+                   SUM(CASE WHEN validations >= 2 THEN 1 ELSE 0 END) AS repeat_customers
+            FROM (
+                -- Número de validações de cada cliente em cada linha/mês
+                SELECT v.linha_id,
+                       EXTRACT(MONTH FROM va.data_hora)::int AS month,
+                       b.cliente_pessoa_id AS cliente_id,
+                       COUNT(*)::int AS validations
+                FROM validacao va
+                JOIN viagem v ON va.viagem_id = v.id
+                JOIN bilhete b ON va.bilhete_id = b.id
+                GROUP BY v.linha_id, EXTRACT(MONTH FROM va.data_hora), b.cliente_pessoa_id
+            ) sub
+            GROUP BY linha_id, month
+            ORDER BY linha_id, month;
+        """
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                'line_id': int(row[0]),
+                'month': int(row[1]),
+                'active_customers': int(row[2]),
+                'repeat_customers': int(row[3])
+            })
+
+        response = {'status': StatusCodes['success'], 'errors': None, 'results': results}
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        logger.error(f'GET /dbproj/report/monthly - error: {error}')
+        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
+
+    finally:
+        if conn:
+            conn.close()
+
+    return flask.jsonify(response)
 
 
 @app.route('/')
