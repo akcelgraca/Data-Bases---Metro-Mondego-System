@@ -1008,6 +1008,21 @@ def purchase_ticket(current_user):
         else:
             return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não suportado'}), 400
 
+        # Atualizar carteira do cliente de forma atómica
+        update_wallet_query = """
+            UPDATE cliente 
+            SET wallet = wallet - %s 
+            WHERE pessoa_id = %s AND wallet >= %s 
+            RETURNING wallet
+        """
+        cur.execute(update_wallet_query, (final_price, user_id, final_price))
+        wallet_result = cur.fetchone()
+        
+        if wallet_result is None:
+            conn.rollback()
+            logger.warning(f'Saldo insuficiente para cliente {user_id}')
+            return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Saldo insuficiente na carteira'}), 400
+
         # 7. Inserir o bilhete e deixar a BD gerar o ID
         insert_query = """
             INSERT INTO bilhete (data_compra, preco_compra,
@@ -1033,7 +1048,7 @@ def purchase_ticket(current_user):
         ))
         new_bilhete_id = cur.fetchone()[0]
 
-        # Se o trigger não rejeitar, fazemos commit
+        # Se tudo correr bem, fazemos commit das duas operações (UPDATE e INSERT)
         conn.commit()
         logger.debug(f'Bilhete {new_bilhete_id} comprado: tipo={product_type}, linha={line_id}, preço={final_price}')
 
@@ -1045,16 +1060,6 @@ def purchase_ticket(current_user):
                 'final_price': final_price
             }
         }
-
-    except psycopg2.Error as error:
-        conn.rollback()
-        # Capturamos a excepção lançada pelo trigger (saldo insuficiente)
-        if 'Saldo insuficiente' in str(error):
-            logger.warning(f'Saldo insuficiente para cliente {user_id}')
-            response = {'status': StatusCodes['api_error'], 'errors': 'Saldo insuficiente na carteira'}
-        else:
-            logger.error(f'POST /dbproj/purchase - erro: {error}')
-            response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
 
     except (Exception, psycopg2.DatabaseError) as error:
         conn.rollback()
