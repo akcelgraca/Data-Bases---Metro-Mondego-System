@@ -637,3 +637,22 @@ DEBUG:logger:Promoção 3 ("School Holidays") criada com sucesso.
 INFO:werkzeug:127.0.0.1 - - [10/May/2026 17:17:46] "POST /dbproj/promotions HTTP/1.1" 200 -
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
 INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 136-546-592
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 136-546-592
+INFO:logger:PUT /dbproj/user
+DEBUG:logger:Login bem-sucedido para admin1, admin=True, super=False
+INFO:werkzeug:127.0.0.1 - - [18/May/2026 16:03:53] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:logger:API v1.0 online: http://127.0.0.1:8080
+INFO:logger:API v1.0 online: http://127.0.0.1:8080

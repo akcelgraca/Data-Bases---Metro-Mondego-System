@@ -246,14 +246,13 @@ def add_administrator(current_user):
             logger.warning(f'Tentativa de registo com email/username já existente: {email}')
             return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
 
-        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
-        new_id = cur.fetchone()[0]
-
         statement = '''
-            INSERT INTO pessoa (id, nome, email, username, password_hash)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO pessoa (nome, email, username, password_hash)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
         '''
-        cur.execute(statement, (new_id, name, email, username, password_hash))
+        cur.execute(statement, (name, email, username, password_hash))
+        new_id = cur.fetchone()[0]
 
         cur.execute(
             "INSERT INTO administrador (is_super, pessoa_id) VALUES (FALSE, %s)",
@@ -344,16 +343,14 @@ def add_customer(current_user):
             logger.warning(f'Email/username já em uso: {email}')
             return flask.jsonify({'status': 400, 'errors': 'Email ou username já em uso'}), 400
 
-        # Gerar novo ID (simulação de auto-incremento)
-        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM pessoa")
-        new_id = cur.fetchone()[0]
-
         # Inserir em pessoa
         statement = '''
-            INSERT INTO pessoa (id, nome, email, username, password_hash)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO pessoa (nome, email, username, password_hash)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
         '''
-        cur.execute(statement, (new_id, name, email, username, password_hash))
+        cur.execute(statement, (name, email, username, password_hash))
+        new_id = cur.fetchone()[0]
 
         # Inserir em cliente (wallet inicial = 0.0)
         cur.execute(
@@ -596,18 +593,16 @@ def broadcast_notice(current_user):
     cur = conn.cursor()
 
     try:
-        # Gerar novo ID para o aviso
-        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM aviso")
-        new_aviso_id = cur.fetchone()[0]
-
         admin_id = current_user['user_id']
 
         # Inserir o aviso na tabela
         insert_aviso_query = """
-            INSERT INTO aviso (id, titulo, mensagem, data_emissao, administrador_pessoa_id)
-            VALUES (%s, %s, %s, CURRENT_DATE, %s)
+            INSERT INTO aviso (titulo, mensagem, data_emissao, administrador_pessoa_id)
+            VALUES (%s, %s, CURRENT_DATE, %s)
+            RETURNING id
         """
-        cur.execute(insert_aviso_query, (new_aviso_id, title, message, admin_id))
+        cur.execute(insert_aviso_query, (title, message, admin_id))
+        new_aviso_id = cur.fetchone()[0]
 
         # Broadcast para todos os clientes inserindo em aviso_cliente
         insert_aviso_cliente_query = """
@@ -703,17 +698,15 @@ def create_promotion(current_user):
         if cur.fetchone() is None:
             return flask.jsonify({'status': 400, 'errors': f'Linha com id {line_id} não encontrada'}), 400
 
-        # Gerar novo ID para a promoção
-        cur.execute("SELECT COALESCE(MAX(id_promocao), 0) + 1 FROM promocao")
-        new_promotion_id = cur.fetchone()[0]
-
         # Inserir a nova promoção na base de dados
         insert_query = """
-            INSERT INTO promocao (id_promocao, nome, desconto, data_inicio, data_fim, tipo_bilhete_id_tipo, linha_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO promocao (nome, desconto, data_inicio, data_fim, tipo_bilhete_id_tipo, linha_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id_promocao
         """
 
-        cur.execute(insert_query, (new_promotion_id, name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
+        cur.execute(insert_query, (name, discount_percent, start_date, end_date, tipo_bilhete_id, line_id))
+        new_promotion_id = cur.fetchone()[0]
 
         # Efetuar o commit da transação
         conn.commit()
@@ -883,16 +876,13 @@ def wallet_topup(current_user):
 
         current_wallet = cliente_row[1]
 
-        # Gerar novo ID para o carregamento
-        cur.execute("SELECT COALESCE(MAX(id_carregamento), 0) + 1 FROM carregamento")
-        new_carregamento_id = cur.fetchone()[0]
-
         # Inserir registo de carregamento
         cur.execute(
-            "INSERT INTO carregamento (id_carregamento, valor, metodo_pagamento, data_hora, cliente_pessoa_id) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            (new_carregamento_id, amount, payment_method, datetime.datetime.now(), user_id)
+            "INSERT INTO carregamento (valor, metodo_pagamento, data_hora, cliente_pessoa_id) "
+            "VALUES (%s, %s, %s, %s) RETURNING id_carregamento",
+            (amount, payment_method, datetime.datetime.now(), user_id)
         )
+        new_carregamento_id = cur.fetchone()[0]
 
         # Atualizar o saldo da carteira
         new_balance = current_wallet + amount
@@ -1015,32 +1005,30 @@ def purchase_ticket(current_user):
         else:
             return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não suportado'}), 400
 
-        # 7. Gerar novo ID para o bilhete
-        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM bilhete")
-        new_bilhete_id = cur.fetchone()[0]
-
-        # 8. Inserir o bilhete (o trigger vai deduzir o saldo automaticamente)
+        # 7. Inserir o bilhete e deixar a BD gerar o ID
         insert_query = """
-            INSERT INTO bilhete (id, data_compra, preco_compra,
+            INSERT INTO bilhete (data_compra, preco_compra,
                                  data_inicio_validade, data_fim_validade,
                                  data_viagem, data_expiracao, estado,
                                  metodo_pagamento, desconto_aplicado,
-                                 tipo_bilhete_id_tipo, cliente_pessoa_id)
-            VALUES (%s, CURRENT_DATE, %s,
+                                 tipo_bilhete_id_tipo, cliente_pessoa_id, linha_id)
+            VALUES (CURRENT_DATE, %s,
                     %s, %s,
                     %s, %s, 'ativo',
                     'wallet', %s,
-                    %s, %s)
+                    %s, %s, %s)
+            RETURNING id
         """
         cur.execute(insert_query, (
-            new_bilhete_id, final_price,
+            final_price,
             data_inicio, data_fim,
             data_viagem, data_expiracao,
             discount,                # armazena o desconto aplicado (0 se não houve)
             tipo_bilhete_id,
             user_id,
-            line_id # correção/adição
+            line_id
         ))
+        new_bilhete_id = cur.fetchone()[0]
 
         # Se o trigger não rejeitar, fazemos commit
         conn.commit()
