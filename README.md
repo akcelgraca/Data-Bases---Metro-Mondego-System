@@ -144,9 +144,9 @@ pip install psycopg flask pyjwt
 ### 3. Set up the database
 
 ```bash
-psql -U postgres -c "CREATE DATABASE metromondego;"
-psql -U postgres -d metromondego -f createtable.sql
-psql -U postgres -d metromondego -f insertdata.sql
+psql -U postgres -c "CREATE DATABASE metro;"
+psql -U postgres -d metro -f createtable.sql
+psql -U postgres -d metro -f insertdata.sql
 ```
 
 ### 4. Run the API
