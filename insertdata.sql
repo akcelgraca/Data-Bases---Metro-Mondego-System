@@ -137,12 +137,12 @@ INSERT INTO carregamento (id_carregamento, valor, metodo_pagamento, data_hora, c
 -- NÍVEL 4: ENTIDADES ASSOCIATIVAS OU COM MÚLTIPLAS DEPENDÊNCIAS
 -- ------------------------------------------------------------
 -- 4.1. BILHETE (depende de CLIENTE e TIPO_BILHETE)
-INSERT INTO bilhete (id, data_compra, preco_compra, data_inicio_validade, data_fim_validade, data_viagem, data_expiracao, estado, metodo_pagamento, desconto_aplicado, tipo_bilhete_id_tipo, cliente_pessoa_id) VALUES
-(1001, '2025-04-10', 1.50, NULL, NULL, '2025-04-10', NULL, 'ativo', 'wallet', 0, 1, 3),
-(1002, '2025-04-10', 4.00, '2025-04-10', '2025-04-11', NULL, NULL, 'ativo', 'wallet', 0, 2, 4),
-(1003, '2025-04-09', 30.00, '2025-04-09', '2025-05-09', NULL, NULL, 'ativo', 'wallet', 0, 3, 5),
-(1004, '2025-04-10', 1.50, NULL, NULL, '2025-04-10', NULL, 'ativo', 'wallet', 0, 1, 6),
-(1005, '2025-04-10', 20.00, '2025-04-10', '2025-05-10', NULL, NULL, 'ativo', 'card', 0, 4, 7);
+INSERT INTO bilhete (id, data_compra, preco_compra, data_inicio_validade, data_fim_validade, data_viagem, data_expiracao, estado, metodo_pagamento, desconto_aplicado, tipo_bilhete_id_tipo, cliente_pessoa_id, linha_id) VALUES
+(1001, '2025-04-10', 1.50, NULL, NULL, '2025-04-10', NULL, 'ativo', 'wallet', 0, 1, 3, 1),
+(1002, '2025-04-10', 4.00, '2025-04-10', '2025-04-11', NULL, NULL, 'ativo', 'wallet', 0, 2, 4, 1),
+(1003, '2025-04-09', 30.00, '2025-04-09', '2025-05-09', NULL, NULL, 'ativo', 'wallet', 0, 3, 5, 3),
+(1004, '2025-04-10', 1.50, NULL, NULL, '2025-04-10', NULL, 'ativo', 'wallet', 0, 1, 6, 1),
+(1005, '2025-04-10', 20.00, '2025-04-10', '2025-05-10', NULL, NULL, 'ativo', 'card', 0, 4, 7, 2);
 
 -- 4.2. VALIDACAO (depende de BILHETE, VIAGEM e PARAGEM)
 INSERT INTO validacao (data_hora, bilhete_id, viagem_id, paragem_id) VALUES
@@ -163,3 +163,12 @@ INSERT INTO aviso_cliente (data_entrega, data_leitura, lido, aviso_id, cliente_p
 INSERT INTO interrupcao_linha (id_interrupcao, data_inicio, data_fim, motivo, estado, administrador_pessoa_id, linha_id) VALUES
 (1, '2025-04-15', '2025-04-16', 'Manutenção da via', TRUE, 2, 1),
 (2, '2025-04-20', '2025-04-20', 'Evento cultural', FALSE, 1, 2);
+
+-- ------------------------------------------------------------
+-- AJUSTE DE SEQUÊNCIAS PARA COLUNAS IDENTITY
+-- ------------------------------------------------------------
+SELECT setval(pg_get_serial_sequence('pessoa', 'id'), COALESCE((SELECT MAX(id) FROM pessoa), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('bilhete', 'id'), COALESCE((SELECT MAX(id) FROM bilhete), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('aviso', 'id'), COALESCE((SELECT MAX(id) FROM aviso), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('promocao', 'id_promocao'), COALESCE((SELECT MAX(id_promocao) FROM promocao), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('carregamento', 'id_carregamento'), COALESCE((SELECT MAX(id_carregamento) FROM carregamento), 1), TRUE);
