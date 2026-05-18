@@ -1,0 +1,21 @@
+# VS Code
+.vscode/
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.env
+
+# Logs
+*.log
+log_file.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
