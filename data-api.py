@@ -884,9 +884,12 @@ def wallet_topup(current_user):
         )
         new_carregamento_id = cur.fetchone()[0]
 
-        # Atualizar o saldo da carteira
-        new_balance = current_wallet + amount
-        cur.execute("UPDATE cliente SET wallet = %s WHERE pessoa_id = %s", (new_balance, user_id))
+        # Atualizar o saldo da carteira do cliente
+        cur.execute(
+            "UPDATE cliente SET wallet = wallet + %s WHERE pessoa_id = %s RETURNING wallet", 
+            (amount, user_id)
+        )
+        new_balance = cur.fetchone()[0]
 
         conn.commit()
         logger.debug(f'Cliente {user_id} carregou {amount:.2f}€. Saldo: {new_balance:.2f}€')
