@@ -1170,7 +1170,6 @@ def validate_ticket(current_user, ticket_id):
                 return flask.jsonify({'status': 400, 'errors': 'Esta paragem não pertence à linha do bilhete'}), 400
 
         # 7. Tentar encontrar uma viagem que corresponda à validação
-        #    (opcional – se não encontrarmos, viagem_id fica NULL)
         viagem_id = None
         try:
             cur.execute("""
@@ -1189,6 +1188,9 @@ def validate_ticket(current_user, ticket_id):
         except Exception:
             # Em caso de erro na inferência, mantemos NULL
             pass
+
+        if viagem_id is None:
+            return flask.jsonify({'status': 400, 'errors': 'Não foi encontrada nenhuma viagem ativa nesta paragem a essa hora.'}), 400
 
         # 8. Inserir a validação
         cur.execute("""
