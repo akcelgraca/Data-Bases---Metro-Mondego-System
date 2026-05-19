@@ -22,3 +22,4 @@ INSERT INTO promocao (id_promocao, nome, desconto, data_inicio, data_fim, tipo_b
 
 -- Atualizar sequência
 SELECT setval(pg_get_serial_sequence('promocao', 'id_promocao'), COALESCE((SELECT MAX(id_promocao) FROM promocao), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('tipo_bilhete', 'id_tipo'), COALESCE((SELECT MAX(id_tipo) FROM tipo_bilhete), 1), TRUE);

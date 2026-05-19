@@ -16,3 +16,6 @@ INSERT INTO viagem (id, data_hora_partida, direcao, capacidade_disponivel, atras
 (302, CURRENT_DATE + TIME '08:30:00', 'ida', 50, 0, 3),
 (303, CURRENT_DATE + TIME '08:00:00', 'volta', 50, 0, 3),
 (304, CURRENT_DATE + TIME '09:30:00', 'volta', 50, 0, 3);
+
+-- Atualizar sequências
+SELECT setval(pg_get_serial_sequence('viagem', 'id'), COALESCE((SELECT MAX(id) FROM viagem), 1), TRUE);

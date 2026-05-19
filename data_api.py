@@ -194,7 +194,7 @@ def login():
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 2 — Adicionar Administrador (Super Admin only)
@@ -288,7 +288,7 @@ def add_administrator(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 3 — Adicionar Cliente (Admin only)
@@ -387,7 +387,7 @@ def add_customer(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 4 — Atualizar configurações de operação de uma linha (Admin only)
@@ -473,7 +473,7 @@ def update_line_operation(current_user, line_id):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 5 — Atualizar preço de um tipo de bilhete (Admin only)
@@ -554,7 +554,7 @@ def update_fare_price(current_user, fare_id):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 
 ##
@@ -628,7 +628,7 @@ def broadcast_notice(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 
 ## Endpoint 7 - Criar promoção e regra de desconto (Admin only)
@@ -727,7 +727,7 @@ def create_promotion(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 8 — Listar linhas e próximas partidas (Clientes / qualquer autenticado)
@@ -822,7 +822,7 @@ def lines_next(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 9 — Adicionar fundos à carteira (Cliente autenticado)
@@ -909,7 +909,7 @@ def wallet_topup(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 10 — Comprar bilhete/passe (Clientes)
@@ -1061,7 +1061,7 @@ def purchase_ticket(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 11 — Validar/Usar bilhete (Clientes)
@@ -1210,7 +1210,7 @@ def validate_ticket(current_user, ticket_id):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 12 — Períodos de procura máxima e mínima (Admin only)
@@ -1307,7 +1307,7 @@ def report_demand(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 13 — Top spenders por linha (Admin only)
@@ -1377,7 +1377,7 @@ def report_top_spenders(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 ##
 ## Endpoint 14 — Relatório mensal (Admin only)
@@ -1444,7 +1444,7 @@ def report_monthly(current_user):
         if conn:
             conn.close()
 
-    return flask.jsonify(response)
+    return flask.jsonify(response), response.get('status', 200)
 
 
 @app.route('/')

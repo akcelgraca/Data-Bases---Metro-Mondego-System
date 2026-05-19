@@ -42,3 +42,7 @@ INSERT INTO trajeto (sequencia, tempo_previsto_desde_origem, distancia_acumulada
 (2, 25, 12.5, 'B', 3, 5),
 (3, 40, 22.5, 'B', 3, 4),
 (4, 60, 35.0, 'B', 3, 6);
+
+-- Atualizar sequências
+SELECT setval(pg_get_serial_sequence('linha', 'id'), COALESCE((SELECT MAX(id) FROM linha), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('paragem', 'id'), COALESCE((SELECT MAX(id) FROM paragem), 1), TRUE);

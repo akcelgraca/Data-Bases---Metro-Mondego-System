@@ -43,3 +43,4 @@ INSERT INTO interrupcao_linha (id_interrupcao, data_inicio, data_fim, motivo, es
 SELECT setval(pg_get_serial_sequence('bilhete', 'id'), COALESCE((SELECT MAX(id) FROM bilhete), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('aviso', 'id'), COALESCE((SELECT MAX(id) FROM aviso), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('carregamento', 'id_carregamento'), COALESCE((SELECT MAX(id_carregamento) FROM carregamento), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('interrupcao_linha', 'id_interrupcao'), COALESCE((SELECT MAX(id_interrupcao) FROM interrupcao_linha), 1), TRUE);
