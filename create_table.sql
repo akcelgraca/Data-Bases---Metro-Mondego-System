@@ -25,7 +25,7 @@ CREATE TABLE trajeto (
 	sequencia			 INTEGER,
 	tempo_previsto_desde_origem INTEGER,
 	distancia_acumulada	 FLOAT(8),
-	plataforma_sentido		 VARCHAR(512),
+	plataforma_sentido		 VARCHAR(512) CHECK (plataforma_sentido IN ('A', 'B')),
 	linha_id			 BIGINT,
 	paragem_id			 BIGINT NOT NULL,
 	PRIMARY KEY(sequencia, linha_id, plataforma_sentido)
