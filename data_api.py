@@ -1162,9 +1162,10 @@ def validate_ticket(current_user, ticket_id):
 
         # 7. Tentar encontrar uma viagem que corresponda à validação e deduzir capacidade
         viagem_id = None
+        capacidade_disponivel = None
         try:
             cur.execute("""
-                SELECT v.id
+                SELECT v.id, v.capacidade_disponivel
                 FROM viagem v
                 JOIN trajeto t ON t.linha_id = v.linha_id
                 WHERE t.paragem_id = %s
@@ -1176,12 +1177,17 @@ def validate_ticket(current_user, ticket_id):
             row = cur.fetchone()
             if row:
                 viagem_id = row[0]
+                capacidade_disponivel = row[1]
         except Exception:
             # Em caso de erro na inferência, mantemos NULL
             pass
 
         if viagem_id is None:
             return flask.jsonify({'status': 400, 'errors': 'Não foi encontrada nenhuma viagem ativa nesta paragem a essa hora.'}), 400
+
+        if capacidade_disponivel <= 0:
+            conn.rollback()
+            return flask.jsonify({'status': 400, 'errors': 'A viagem já se encontra na sua lotação máxima.'}), 400
 
         # Deduzir capacidade do veículo
         cur.execute("UPDATE viagem SET capacidade_disponivel = capacidade_disponivel - 1 WHERE id = %s", (viagem_id,))
