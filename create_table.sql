@@ -166,3 +166,23 @@ ALTER TABLE aviso_cliente ADD CONSTRAINT aviso_cliente_fk1 FOREIGN KEY (aviso_id
 ALTER TABLE aviso_cliente ADD CONSTRAINT aviso_cliente_fk2 FOREIGN KEY (cliente_pessoa_id) REFERENCES cliente(pessoa_id);
 ALTER TABLE interrupcao_linha ADD CONSTRAINT interrupcao_linha_fk1 FOREIGN KEY (administrador_pessoa_id) REFERENCES administrador(pessoa_id);
 ALTER TABLE interrupcao_linha ADD CONSTRAINT interrupcao_linha_fk2 FOREIGN KEY (linha_id) REFERENCES linha(id);
+
+CREATE OR REPLACE FUNCTION trigger_deduct_wallet_func()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE cliente
+    SET wallet = wallet - NEW.preco_compra
+    WHERE pessoa_id = NEW.cliente_pessoa_id AND wallet >= NEW.preco_compra;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Saldo insuficiente na carteira ou cliente inexistente';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_deduct_wallet
+BEFORE INSERT ON bilhete
+FOR EACH ROW
+EXECUTE FUNCTION trigger_deduct_wallet_func();

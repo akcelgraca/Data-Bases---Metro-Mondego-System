@@ -869,7 +869,7 @@ def wallet_topup(current_user):
 
     try:
         # Verificar que o utilizador é realmente um cliente
-        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s", (user_id,))
+        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s FOR UPDATE", (user_id,))
         cliente_row = cur.fetchone()
         if not cliente_row:
             return flask.jsonify({'status': 400, 'errors': 'O utilizador autenticado não é um cliente'}), 400
@@ -951,7 +951,7 @@ def purchase_ticket(current_user):
 
     try:
         # 2. Verificar que o utilizador é mesmo um cliente
-        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s", (user_id,))
+        cur.execute("SELECT pessoa_id, wallet FROM cliente WHERE pessoa_id = %s FOR UPDATE", (user_id,))
         cliente_row = cur.fetchone()
         if not cliente_row:
             return flask.jsonify({'status': 400, 'errors': 'Utilizador não é cliente'}), 400
@@ -1008,17 +1008,8 @@ def purchase_ticket(current_user):
         else:
             return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não suportado'}), 400
 
-        # Atualizar carteira do cliente de forma atómica
-        update_wallet_query = """
-            UPDATE cliente 
-            SET wallet = wallet - %s 
-            WHERE pessoa_id = %s AND wallet >= %s 
-            RETURNING wallet
-        """
-        cur.execute(update_wallet_query, (final_price, user_id, final_price))
-        wallet_result = cur.fetchone()
-        
-        if wallet_result is None:
+        # Verificar saldo antes do INSERT (o trigger fará a dedução)
+        if cliente_row[1] < final_price:
             conn.rollback()
             logger.warning(f'Saldo insuficiente para cliente {user_id}')
             return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Saldo insuficiente na carteira'}), 400
@@ -1115,7 +1106,7 @@ def validate_ticket(current_user, ticket_id):
             SELECT id, estado, data_inicio_validade, data_fim_validade,
                    data_viagem, data_expiracao, tipo_bilhete_id_tipo, linha_id
             FROM bilhete
-            WHERE id = %s AND cliente_pessoa_id = %s
+            WHERE id = %s AND cliente_pessoa_id = %s FOR UPDATE
         """, (ticket_id, user_id))
         bilhete = cur.fetchone()
         if not bilhete:
@@ -1169,7 +1160,7 @@ def validate_ticket(current_user, ticket_id):
             if not cur.fetchone():
                 return flask.jsonify({'status': 400, 'errors': 'Esta paragem não pertence à linha do bilhete'}), 400
 
-        # 7. Tentar encontrar uma viagem que corresponda à validação
+        # 7. Tentar encontrar uma viagem que corresponda à validação e deduzir capacidade
         viagem_id = None
         try:
             cur.execute("""
@@ -1180,7 +1171,7 @@ def validate_ticket(current_user, ticket_id):
                   AND v.data_hora_partida <= %s
                   AND (v.data_hora_partida + (t.tempo_previsto_desde_origem || ' minutes')::INTERVAL) >= %s
                 ORDER BY v.data_hora_partida DESC
-                LIMIT 1
+                LIMIT 1 FOR UPDATE
             """, (station_id, used_at, used_at))
             row = cur.fetchone()
             if row:
@@ -1191,6 +1182,9 @@ def validate_ticket(current_user, ticket_id):
 
         if viagem_id is None:
             return flask.jsonify({'status': 400, 'errors': 'Não foi encontrada nenhuma viagem ativa nesta paragem a essa hora.'}), 400
+
+        # Deduzir capacidade do veículo
+        cur.execute("UPDATE viagem SET capacidade_disponivel = capacidade_disponivel - 1 WHERE id = %s", (viagem_id,))
 
         # 8. Inserir a validação
         cur.execute("""
