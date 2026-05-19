@@ -889,7 +889,7 @@ def wallet_topup(current_user):
             "UPDATE cliente SET wallet = wallet + %s WHERE pessoa_id = %s RETURNING wallet", 
             (amount, user_id)
         )
-        new_balance = cur.fetchone()[0]
+        new_balance = float(cur.fetchone()[0])
 
         conn.commit()
         logger.debug(f'Cliente {user_id} carregou {amount:.2f}€. Saldo: {new_balance:.2f}€')
@@ -1009,7 +1009,7 @@ def purchase_ticket(current_user):
             return flask.jsonify({'status': 400, 'errors': f'Tipo de bilhete "{product_type}" não suportado'}), 400
 
         # Verificar saldo antes do INSERT (o trigger fará a dedução)
-        if cliente_row[1] < final_price:
+        if float(cliente_row[1]) < final_price:
             conn.rollback()
             logger.warning(f'Saldo insuficiente para cliente {user_id}')
             return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Saldo insuficiente na carteira'}), 400
