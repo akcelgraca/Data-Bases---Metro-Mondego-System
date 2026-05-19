@@ -1,5 +1,3 @@
--- 03_insert_fares_and_promos.sql
-
 -- 1. TIPO_BILHETE
 INSERT INTO tipo_bilhete (id_tipo, nome) VALUES
 (1, 'single_trip'),

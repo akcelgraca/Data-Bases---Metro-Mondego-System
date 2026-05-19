@@ -1,5 +1,3 @@
--- 01_insert_users.sql
-
 -- 1. PESSOA
 INSERT INTO pessoa (id, nome, email, username, password_hash) VALUES
 (1, 'Super Admin', 'super@metromondego.pt', 'superadmin', 'hash_super'),

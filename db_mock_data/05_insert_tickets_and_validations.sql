@@ -1,5 +1,3 @@
--- 05_insert_tickets_and_validations.sql
-
 -- 1. AVISO
 INSERT INTO aviso (id, titulo, mensagem, data_emissao, administrador_pessoa_id) VALUES
 (1, 'Strike Notice', 'Possible delays between 10:00 and 13:00', CURRENT_DATE - INTERVAL '1 day', 2),

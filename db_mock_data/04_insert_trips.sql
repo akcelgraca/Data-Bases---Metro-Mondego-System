@@ -1,5 +1,3 @@
--- 04_insert_trips.sql
-
 -- 1. VIAGEM
 INSERT INTO viagem (id, data_hora_partida, direcao, capacidade_disponivel, atraso_estimado, linha_id) VALUES
 (101, CURRENT_DATE + TIME '08:10:00', 'ida', 50, 0, 1),

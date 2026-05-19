@@ -1,5 +1,3 @@
--- 06_refresh_report_dates.sql
-
 -- 1. Preencher linha_id para os bilhetes que não tenham (necessário para relatórios de linha)
 -- Escolhemos a linha 1 como default se for NULL
 UPDATE bilhete SET linha_id = 1 WHERE linha_id IS NULL;

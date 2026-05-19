@@ -1,5 +1,3 @@
--- 02_insert_network.sql
-
 -- 1. LINHA
 INSERT INTO linha (id, nome, hora_inicio, hora_fim, frequencia, capacidade_default) VALUES
 (1, 'Portagem - Hospital', '07:30:00', '21:00:00', 20, 50),
