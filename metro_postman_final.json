@@ -1,0 +1,249 @@
+{
+  "info": {
+    "_postman_id": "metro-mondego-final",
+    "name": "Metro Mondego — FINAL",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{admin_token}}", "type": "string"}]
+  },
+  "event": [
+    {"listen": "prerequest", "script": {"type": "text/javascript", "exec": [""]}},
+    {"listen": "test", "script": {"type": "text/javascript", "exec": [""]}}
+  ],
+  "item": [
+    {
+      "name": "— AUTH — Login Super Admin",
+      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
+        "const res = pm.response.json();",
+        "if (res.status === 200) {",
+        "    pm.environment.set('super_token', res.results);",
+        "    console.log('super_token guardado');",
+        "}"
+      ]}}],
+      "request": {
+        "method": "PUT",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n    \"username\": \"superadmin\",\n    \"password\": \"hash_super\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/user", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","user"]}
+      },
+      "response": []
+    },
+    {
+      "name": "— AUTH — Login Admin",
+      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
+        "const res = pm.response.json();",
+        "if (res.status === 200) {",
+        "    pm.environment.set('admin_token', res.results);",
+        "    console.log('admin_token guardado');",
+        "}"
+      ]}}],
+      "request": {
+        "method": "PUT",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"hash_admin1\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/user", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","user"]}
+      },
+      "response": []
+    },
+    {
+      "name": "— AUTH — Login Cliente (anacosta)",
+      "event": [{"listen": "test", "script": {"type": "text/javascript", "exec": [
+        "const res = pm.response.json();",
+        "if (res.status === 200) {",
+        "    pm.environment.set('customer_token', res.results);",
+        "    console.log('customer_token guardado');",
+        "}"
+      ]}}],
+      "request": {
+        "method": "PUT",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n    \"username\": \"anacosta\",\n    \"password\": \"hash_ana\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/user", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","user"]}
+      },
+      "response": []
+    },
+    {
+      "name": "1 — User Authentication",
+      "request": {
+        "method": "PUT",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n    \"username\": \"admin1\",\n    \"password\": \"hash_admin1\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/user", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","user"]}
+      },
+      "response": []
+    },
+    {
+      "name": "2 — Add Administrator",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{super_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"name\": \"Joaoadmin\",\n  \"email\": \"joaoadmin@email.pt\",\n  \"password\": \"12345\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/register/admin", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","register","admin"]}
+      },
+      "response": []
+    },
+    {
+      "name": "3 — Add Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"name\": \"{{$randomFullName}}\",\n    \"nif\": \"{{$randomBankAccount}}\",\n    \"telefone\": \"910000000\",\n    \"email\": \"{{$randomEmail}}\",\n    \"password\": \"secret\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/register/customer", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","register","customer"]}
+      },
+      "response": []
+    },
+    {
+      "name": "4 — Update Line Operation Settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"start_time\": \"08:00:00\",\n    \"end_time\": \"22:00:00\",\n    \"frequency_minutes\": 15,\n    \"vehicle_capacity\": 60\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/line_operation/1", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","line_operation","1"]}
+      },
+      "response": []
+    },
+    {
+      "name": "5 — Update Fare Price",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"price\": 2.75,\n    \"effective_from\": \"2026-07-01\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/fares/1", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","fares","1"]}
+      },
+      "response": []
+    },
+    {
+      "name": "6 — Broadcast Notice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"title\": \"Strike Notice\",\n    \"message\": \"Possible delays between 10:00 and 13:00\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/notices/broadcast", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","notices","broadcast"]}
+      },
+      "response": []
+    },
+    {
+      "name": "7 — Create Promotion",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n  \"name\": \"School Holidays\",\n  \"line_id\": 1,\n  \"product_type\": \"daily\",\n  \"discount_percent\": 20,\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-07-31\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/promotions", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","promotions"]}
+      },
+      "response": []
+    },
+    {
+      "name": "8 — List Lines and Next Departures",
+      "protocolProfileBehavior": {"disableBodyPruning": true},
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text"}],
+        "url": {"raw": "http://localhost:8080/dbproj/lines_next", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","lines_next"]}
+      },
+      "response": []
+    },
+    {
+      "name": "9 — Wallet Top-up",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"amount\": 20.00,\n    \"payment_method\": \"card\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/wallet/topup", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","wallet","topup"]}
+      },
+      "response": []
+    },
+    {
+      "name": "10 — Purchase Ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"line_id\": 1,\n    \"product_type\": \"single_trip\",\n    \"travel_date\": \"2026-05-20\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/purchase", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","purchase"]}
+      },
+      "response": []
+    },
+    {
+      "name": "11 — Validate/Use Ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"used_at\": \"2026-05-20 08:20:00\",\n    \"station_id\": 1\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/ticket/use/1004", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","ticket","use","1004"]}
+      },
+      "response": []
+    },
+    {
+      "name": "12 — Peak and Low Demand",
+      "protocolProfileBehavior": {"disableBodyPruning": true},
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"}],
+        "url": {"raw": "http://localhost:8080/dbproj/report/demand", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","report","demand"]}
+      },
+      "response": []
+    },
+    {
+      "name": "13 — Top Spenders by Line",
+      "protocolProfileBehavior": {"disableBodyPruning": true},
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"}],
+        "url": {"raw": "http://localhost:8080/dbproj/report/top_spenders", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","report","top_spenders"]}
+      },
+      "response": []
+    },
+    {
+      "name": "14 — Monthly Report",
+      "protocolProfileBehavior": {"disableBodyPruning": true},
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text"}],
+        "body": {"mode": "raw", "raw": "", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/report/monthly", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","report","monthly"]}
+      },
+      "response": []
+    },
+    {
+      "name": "CONCORRÊNCIA — Topup x100 (Runner)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text"},
+          {"key": "Content-Type", "value": "application/json", "type": "text"}
+        ],
+        "body": {"mode": "raw", "raw": "{\n    \"amount\": 5.0,\n    \"payment_method\": \"multibanco\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "http://localhost:8080/dbproj/wallet/topup", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["dbproj","wallet","topup"]}
+      },
+      "response": []
+    }
+  ]
+}
